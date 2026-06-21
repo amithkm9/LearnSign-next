@@ -1,0 +1,31 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Next.js (also ignored in learnsign-next/.gitignore)
+.next/
+out/
+
+# Logs
+*.log
+
+# IDE
+.idea/
+
+# Large media — sign/course videos are kept out of git (see README)
+learnsign-next/public/assets/videos/
