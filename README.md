@@ -17,6 +17,7 @@
 
 ## Table of contents
 
+
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -31,12 +32,11 @@
 - [Scripts](#scripts)
 - [Sign data & ML recognition (reality check)](#sign-data--ml-recognition-reality-check)
 - [Design system](#design-system)
-- [Deployment](#deployment)
-- [Known limitations & roadmap](#known-limitations--roadmap)
 
 ---
 
 ## Overview
+
 
 LearnSign teaches Indian Sign Language through short video lessons, an interactive AI
 tutor (text **and** voice, in English / Hindi / Kannada / Telugu), and a webcam quiz
@@ -56,151 +56,52 @@ The system is split into **two independently deployable services**:
 
 ---
 
+
 ## Features
 
-At a glance:
+| Feature | What it does |
+|---|---|
+| 🤟 **AI Tutor (SignMentor)** | Ask how to sign any word, in text or voice, and watch the demonstration. |
+| 📚 **Courses** | Free video lessons grouped by age: 1–4, 5–10, and 15+. |
+| 🧠 **Quiz** | A webcam game that checks your hand signs and scores you. |
+| 📊 **Dashboard** | Streaks, weekly activity, and quiz stats at a glance. |
+| 📝 **Parent report** | A printable, AI-written summary of your child's progress. |
+| 🌐 **Multilingual** | Works in English, Hindi, Kannada, and Telugu. |
 
-| Area | What it does | Where |
-|---|---|---|
-| **Marketing site** | Animated home, about, community pages | `(site)/page.tsx`, `about`, `community` |
-| **Auth** | Email/password + Google OAuth, password reset, route guards | `(auth)/*`, `server/auth-actions.ts`, `middleware.ts` |
-| **Courses** | Catalog by age group (1-4 / 5-10 / 15+), video lessons with objectives | `(site)/courses`, `learn/[id]`, `lesson-player.tsx` |
-| **Progress tracking** | Visible-tab watch-time tracking, heartbeats, streaks | `api/learning/events`, `lesson-player.tsx` |
-| **AI Tutor** | Text + voice chat in EN/HI/KN/TE; demonstrates sign-video sequences | `(site)/tutor`, `tutor-chat.tsx`, Python `tutor.py` |
-| **Quiz** | Webcam recognises A/B/C & 1/2/3 hand signs | `(site)/quiz`, `quiz-player.tsx`, Python `recognition.py` |
-| **Dashboard** | Weekly activity chart, streaks, continue-learning, quiz stats | `(site)/dashboard`, `lib/data/analytics.ts` |
-| **Parent report** | Stats + charts (TS) + AI narrative (Python), printable to PDF | `(site)/report`, `api/report`, Python `report.py` |
-| **Packages** | Pricing tiers (presentational; no payment yet) | `(site)/packages`, `pricing-tiers.tsx` |
+### 🏠 Home
 
-A guided tour of the main screens follows.
+A playful landing page for kids 3–15 and their parents — pick a path and start signing.
 
-### 🏠 Home — "Sign language, made joyful"
+![Home](docs/screenshots/home.png)
 
-![Home page](docs/screenshots/home.png)
+### 📚 Courses
 
-The landing page sets the playful, kid-first tone (display font Fredoka, animated
-gradient headline, floating sign emojis). It targets the dual audience — **children
-aged 3–15 and their grown-ups learning together**. Highlights:
+Free lessons by age group: **Early Learners (1–4)**, **Young Explorers (5–10)**, and **Advanced (15+)**.
 
-- A bold hero (*"Sign language, made joyful"*) with two clear calls to action:
-  **Start learning free** and **Explore courses**.
-- Animated **sign-word chips** (Hello · Thank you · I love you · Family · Friend) that
-  hint at the vocabulary you'll learn.
-- Count-up **stat cards** — *1,000+ happy families · 50+ bite-size lessons · 350+ signs
-  to discover*. (These hero numbers are illustrative; the live, accurate figures are the
-  354-sign library and the seeded course catalog.)
-- A signed-in user (top-right avatar) sees the full authenticated nav: Home, Courses,
-  Packages, AI Tutor, About, Community, **Dashboard**, **Quiz**.
+![Courses](docs/screenshots/courses.png)
 
-### 📚 Courses — an age-based catalog
+### 🤟 AI Tutor — SignMentor
 
-![Course catalog](docs/screenshots/courses.png)
+Ask how to sign anything and watch it. It understands full sentences, fingerspells words it doesn't have a sign for, and gives teaching tips with mirror / loop / slow-motion controls.
 
-Every course is **100% free**. Learners pick a path by age, and each card shows what's
-inside and how many courses it holds. The three tracks:
+![AI Tutor](docs/screenshots/ai-tutor.png)
 
-- **Early Learners (Ages 1–4)** — foundational signing through play: *basic gestures,
-  simple words, numbers 1–10*.
-- **Young Explorers (Ages 5–10)** — building vocabulary and simple conversations:
-  *alphabet & spelling, family & school signs, short conversations*.
-- **Advanced Learners (Ages 15+)** — *emotions & expressions, complex grammar, fluent
-  conversation*.
+### 💳 Packages
 
-Selecting a track opens the courses for that age group; opening a course plays its video
-lesson alongside learning objectives and skills. The catalog is **data-driven** from the
-`courses` table (counts via `getCategoryCounts()`), and watch-time is tracked into your
-progress while you're signed in.
+A free self-paced plan, a paid 1-on-1 Personal Tutor, and custom plans for NGOs & schools.
 
-### 💳 Packages — learning plans
+![Packages](docs/screenshots/packages.png)
 
-![Packages / pricing plans](docs/screenshots/packages.png)
+### 📊 Dashboard
 
-Three plans, from free self-paced learning to institution-wide rollouts:
+Track streaks, weekly activity, and quiz stats — plus a printable parent report.
 
-- **Basics — Free forever.** All video lessons, interactive sign quizzes, webcam sign
-  practice, the AI tutor (SignMentor), and progress tracking & badges.
-- **Personal Tutor — ₹2,000/month (Most popular).** Everything in Basics plus **1-on-1
-  live sessions with a certified ISL tutor**, a learning plan tailored to your child,
-  weekly progress calls with parents, homework & personal feedback, and a completion
-  certificate.
-- **NGO & Schools — Custom.** Unlimited student accounts, a teacher/admin dashboard,
-  bulk progress tracking, custom curriculum & training, a dedicated support manager, and
-  special pricing for NGOs — with contact details for a quote.
-
-> The pricing UI is **presentational** today — there's no payment integration yet; the
-> Personal Tutor / NGO actions open a "contact us" flow.
-
-### 🤟 AI Tutor — SignMentor (the flagship feature)
-
-![AI Tutor SignMentor](docs/screenshots/ai-tutor.png)
-
-This is the heart of LearnSign: **a parent who doesn't know a sign asks in plain
-language, and SignMentor shows them how to sign it** — clearly enough to turn around and
-teach their child. In the screenshot, asking *"good morning"* returns *"Here's how to
-sign GOOD MORNING 👇"* as a **two-sign sequence** — clickable **GOOD** / **MORNING** word
-chips, the demonstration video, a caption (**Sign: MORNING**), and a full practice
-toolbar.
-
-What's happening under the hood (the three-stage pipeline):
-
-1. **Robust matching.** Whatever a parent types is mapped to the right sign — synonyms
-   and typos (*mom → MOTHER*, *puppy → DOG*), quirky library keys (*play → PLAY_0A*), and
-   light de-inflection (*dogs → DOG*). For conversational asks like *"how do I tell my
-   child to go to the toilet"*, a **grounded LLM extracts the intended word** (*→ BATHROOM*)
-   — grounded in the real library, so it never invents a sign that has no video.
-2. **Fingerspelling fallback.** If a word has no single sign — a name like *Riya*, or
-   *milk* — it's **spelled out letter-by-letter** from the A–Z / 0–9 clips, so the tutor
-   is *never* empty-handed.
-3. **Teaching-grade demonstration.** The player is built for teaching a child:
-   - **Replay / Play-Pause** · **0.5×** slow-motion · **Loop** (repeat hands-free) ·
-     **Mirror** (flip the video so you can face your child and copy naturally).
-   - A **"👩‍🏫 Teaching tips"** panel with simple coaching ("get to eye level", "sign
-     slowly then let them try", "celebrate every attempt").
-   - Multi-word answers play as a sequence with clickable word chips.
-
-It's also **multilingual** (English / Hindi / Kannada / Telugu — selector top-right) with
-**voice input** (mic → Whisper) and **spoken replies** (speaker toggle → TTS). General
-questions about learning sign language are answered as chat, rather than forced into a
-video.
-
-### 📊 Dashboard — progress at a glance
-
-![Learner dashboard](docs/screenshots/dashboard.png)
-
-After signing in, the dashboard summarizes how learning is going, with quick links to the
-**Parent Report** and to **Continue learning**:
-
-- **Top stat cards** — minutes this week (and *X/7 days active*), current streak (with
-  best), courses completed (and in progress), and an estimated **signs learned** count.
-- A **Weekly activity** bar chart (Mon–Sun) of practice time.
-- A **Continue learning** panel that resumes your last course (or nudges you to find one).
-- An all-time stats row — total learning time, days active, average session, completion
-  rate, average quiz score, and quiz pass rate.
-
-Everything here is computed from the `learning_events` and `quiz_attempts` tables in
-`lib/data/analytics.ts`. Two more authenticated features live alongside it:
-
-- **Quiz** — a webcam game that recognises hand signs (currently the letters A/B/C and
-  numbers 1/2/3) via the Python TensorFlow + MediaPipe model and scores your attempt.
-- **Parent Report** — a printable report combining your stats and charts (TypeScript)
-  with an AI-written narrative of strengths, growth areas, and tips (Python).
-
-> Screenshots live in [`docs/screenshots/`](docs/screenshots). Numbers shown are from a
-> fresh demo account.
-
-### Page map
-
-| Route | Access | Notes |
-|---|---|---|
-| `/` `/about` `/community` `/courses` `/courses/[ageGroup]` `/packages` | Public | |
-| `/learn/[id]` | Public | Progress only tracked when logged in |
-| `/tutor` | Public link, **redirects to login** | guarded by middleware |
-| `/dashboard` `/quiz` `/report` | **Protected** | guarded by middleware |
-| `/login` `/register` `/forgot-password` `/auth/update-password` | Auth flow | |
+![Dashboard](docs/screenshots/dashboard.png)
 
 ---
 
 ## Architecture
+
 
 ```mermaid
 flowchart TD
@@ -243,6 +144,7 @@ heavy ML dependencies isolated and lets each side scale and deploy on its own.
 ---
 
 ## Repository structure
+
 
 ```
 LearnSign_pro_/
@@ -289,6 +191,7 @@ LearnSign_pro_/
 
 ## Tech stack
 
+
 **Web (`learnsign-next`)**
 - Next.js 15 (App Router, RSC), React 19, TypeScript 5.7
 - Tailwind CSS 3 + shadcn/ui (new-york style) · framer-motion (animation) · lucide-react (icons)
@@ -312,6 +215,7 @@ LearnSign_pro_/
 ---
 
 ## How the key flows work
+
 
 ### Authentication (Supabase SSR)
 
@@ -376,6 +280,7 @@ sequenceDiagram
 ---
 
 ## Data model
+
 
 ```mermaid
 erDiagram
@@ -450,6 +355,7 @@ erDiagram
 
 ## API reference
 
+
 ### Next.js gateway routes (`learnsign-next/src/app/api`)
 
 | Method | Path | Auth | Purpose |
@@ -477,6 +383,7 @@ erDiagram
 ---
 
 ## Getting started
+
 
 **Prerequisites:** Node 18+, Python 3.10–3.12, a Supabase project, and (optionally) an
 OpenAI API key. Sign-video lookup works without OpenAI; chat/voice/report need a valid key.
@@ -514,6 +421,7 @@ npm run dev                        # → http://localhost:3000
 
 ## Environment variables
 
+
 ### `learnsign-next/.env.local`
 
 | Variable | Description |
@@ -539,6 +447,7 @@ npm run dev                        # → http://localhost:3000
 ---
 
 ## Database, migrations & RLS
+
 
 Schema lives in `learnsign-next/src/lib/db/schema.ts` (Drizzle). Workflow:
 
@@ -568,6 +477,7 @@ npm run db:studio     # browse data
 
 ## Scripts
 
+
 `learnsign-next/scripts/`:
 
 | Script | Purpose |
@@ -581,6 +491,7 @@ npm run db:studio     # browse data
 ---
 
 ## Sign data & ML recognition (reality check)
+
 
 This README is honest about what the ML actually does today:
 
@@ -599,6 +510,7 @@ This README is honest about what the ML actually does today:
 
 ## Design system
 
+
 - **Brand colour:** lavender `#7C6FDB` (`--primary`), with light/dark variants and a kid
   palette (orange/green/blue/pink/yellow). Full dark-mode theme included.
 - **Fonts:** Poppins (body, `--font-sans`) + Fredoka (display headings, `--font-display`).
@@ -606,42 +518,5 @@ This README is honest about what the ML actually does today:
   plus CSS keyframes (`float`, `blob`, `wiggle`, `gradient-x`, `shimmer`, …).
 - **Utilities** (in `globals.css`): `.text-gradient`, `.card-base`, `.card-interactive`,
   `.chip`, `.eyebrow`, `.bg-dots`.
-
----
-
-## Deployment
-
-The two services deploy **independently**:
-
-- **`learnsign-next`** → Vercel (or any Node host). Set the env vars above; point
-  `AI_SERVICE_URL` at the deployed Python service.
-- **`ai-service`** → Render / Fly / a container host. A `Dockerfile` is provided
-  (`python:3.11-slim`, exposes `8100`). Provide `OPENAI_API_KEY` via the platform's secrets.
-
-**Before production:**
-- **Sign videos** (`learnsign-next/public/assets/videos/`, ~340 MB) are kept out of git —
-  serve them from object storage / a CDN (e.g. Supabase Storage).
-- Secrets live in each service's local env file and are never committed.
-- Lock down `/api/ml/recognize` (see below).
-
----
-
-## Known limitations & roadmap
-
-Tracked honestly so they're easy to pick up:
-
-**Functional gaps**
-- The webcam quiz recognises only 6 classes (A/B/C, 1/2/3).
-- The `packages` DB table exists but the pricing UI is hardcoded; there is no real payment.
-- The report cache is in-memory (per-instance — move to Redis for multi-instance scale).
-- `age_group` has no band for ages 11–14 (`1-4 | 5-10 | 15+`).
-- Courses `006`–`008` reference a missing `placeholder.mp4` (player shows a graceful fallback).
-
-**Roadmap**
-- Production deployment (Vercel + Render/Fly) and moving videos to a CDN.
-- Real payments for packages.
-- Expanding the recognition model beyond 6 classes.
-
----
 
 <p align="center"><sub>Made with 💜 for the deaf and hard-of-hearing community.</sub></p>
