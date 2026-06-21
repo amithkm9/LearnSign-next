@@ -137,7 +137,6 @@ LearnSign_pro_/
 │   ├── requirements.txt
 │   └── Dockerfile
 │
-├── docs/                      # screenshots & guides
 └── README.md                  # ← this file
 ```
 
