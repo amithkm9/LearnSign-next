@@ -46,12 +46,6 @@ const LEAD = {
   specialties: ["Project Leadership", "System Architecture", "Accessibility"],
 };
 
-const TEAM = [
-  { img: "/assets/imgs/adarsh.jpg", name: "Adarsh K R", role: "Full Stack Developer", bio: "Builds the robust frontend and backend that keep lessons smooth and seamless.", skills: ["Frontend", "Backend"], accent: "ring-brand-blue/30" },
-  { img: "/assets/imgs/chandana.png", name: "Chandana N M", role: "Research & Development", bio: "Explores accessibility tech and the best ways to teach sign language.", skills: ["Research", "Accessibility"], accent: "ring-brand-pink/30" },
-  { img: "/assets/imgs/prajwal.jpg", name: "Prajwal K", role: "Backend Engineer", bio: "Crafts the scalable services powering lessons, sign recognition, and the AI tutor.", skills: ["Backend", "Scalability"], accent: "ring-brand-green/30" },
-];
-
 const VALUES = [
   { icon: "🌟", title: "Excellence", text: "We sweat the small stuff — every word, animation, and lesson.", color: "text-brand-yellow" },
   { icon: "🤝", title: "Inclusivity", text: "Built with and for the Deaf community, so everyone belongs.", color: "text-brand-blue" },
@@ -79,9 +73,9 @@ export default function AboutPage() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-              LearnSign is a small team on a big mission: to make learning Indian
-              Sign Language the warmest, most accessible, most joyful it can be —
-              for kids, parents, and teachers alike.
+              LearnSign is a one-person project on a big mission: to make learning
+              Indian Sign Language the warmest, most accessible, most joyful it can
+              be — for kids, parents, and teachers alike.
             </p>
           </Reveal>
           <div className="mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
@@ -127,60 +121,43 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ===== Team ===== */}
+      {/* ===== Builder ===== */}
       <section className="bg-secondary/30 py-16 sm:py-20">
         <div className="container">
-          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="eyebrow">👥 Our team</span>
-            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">The people behind LearnSign</h2>
+          <Reveal className="mx-auto mb-10 max-w-2xl text-center">
+            <span className="eyebrow">👤 Who builds it</span>
+            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">The person behind LearnSign</h2>
             <p className="mt-3 text-muted-foreground">
-              A small, passionate student team — developers, researchers, and
-              accessibility advocates building this together.
+              Designed, built, and maintained by one developer who believes
+              communication is a right — not a privilege.
             </p>
           </Reveal>
 
-          {/* Team lead */}
-          <Reveal className="mx-auto mb-8 max-w-4xl">
-            <div className="card-base relative overflow-hidden p-6 transition-shadow hover:shadow-soft-lg sm:flex sm:items-center sm:gap-8 sm:p-8">
-              <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+          <Reveal className="mx-auto max-w-2xl">
+            <div className="card-base relative overflow-hidden p-8 text-center sm:p-10">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-60 w-60 rounded-full bg-primary/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-24 h-60 w-60 rounded-full bg-brand-pink/10 blur-3xl" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={LEAD.img}
                 alt={LEAD.name}
-                className="relative mx-auto size-44 shrink-0 rounded-[1.75rem] object-cover shadow-soft ring-4 ring-primary/20 sm:mx-0"
+                className="relative mx-auto size-40 rounded-[2rem] object-cover shadow-soft ring-4 ring-primary/20"
               />
-              <div className="relative mt-6 text-center sm:mt-0 sm:text-left">
-                <span className="chip mb-3 bg-primary text-primary-foreground">⭐ Team Lead</span>
-                <h3 className="font-display text-2xl font-bold">{LEAD.name}</h3>
-                <p className="text-sm font-medium text-primary">{LEAD.role}</p>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{LEAD.bio}</p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
-                  {LEAD.specialties.map((s) => (
-                    <span key={s} className="chip bg-primary/10 text-primary">{s}</span>
-                  ))}
-                </div>
+              <span className="chip relative mt-5 inline-block bg-primary text-primary-foreground">
+                ⭐ Founder &amp; Developer
+              </span>
+              <h3 className="relative mt-3 font-display text-2xl font-bold">{LEAD.name}</h3>
+              <p className="relative text-sm font-medium text-primary">{LEAD.role}</p>
+              <p className="relative mx-auto mt-4 max-w-xl text-pretty leading-relaxed text-muted-foreground">
+                {LEAD.bio}
+              </p>
+              <div className="relative mt-5 flex flex-wrap justify-center gap-2">
+                {LEAD.specialties.map((s) => (
+                  <span key={s} className="chip bg-primary/10 text-primary">{s}</span>
+                ))}
               </div>
             </div>
           </Reveal>
-
-          <RevealStagger className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {TEAM.map((m) => (
-              <RevealItem key={m.name}>
-                <div className="card-base card-interactive h-full p-6 text-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.img} alt={m.name} className={`mx-auto size-28 rounded-full object-cover ring-4 ${m.accent}`} />
-                  <h3 className="mt-4 font-display font-semibold">{m.name}</h3>
-                  <p className="text-sm text-primary">{m.role}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{m.bio}</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    {m.skills.map((s) => (
-                      <span key={s} className="chip bg-secondary text-secondary-foreground">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              </RevealItem>
-            ))}
-          </RevealStagger>
         </div>
       </section>
 
