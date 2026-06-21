@@ -18,10 +18,10 @@
 ## Table of contents
 
 - [Overview](#overview)
+- [Features](#features)
 - [Architecture](#architecture)
 - [Repository structure](#repository-structure)
 - [Tech stack](#tech-stack)
-- [Features](#features)
 - [How the key flows work](#how-the-key-flows-work)
 - [Data model](#data-model)
 - [API reference](#api-reference)
@@ -53,117 +53,6 @@ The system is split into **two independently deployable services**:
 > **Design principle:** the browser **only ever talks to the Next.js app**. Next verifies
 > the user, gathers their context from the database, and proxies AI requests to the Python
 > service. Python never touches the database or auth — Next passes everything it needs.
-
----
-
-## Architecture
-
-```mermaid
-flowchart TD
-    Browser["🌐 Browser<br/>(React UI)"]
-
-    subgraph Next["learnsign-next · Next.js 15 + TypeScript · :3000"]
-        UI["UI / Pages<br/>(App Router, RSC + client components)"]
-        MW["middleware.ts<br/>session refresh + route guards"]
-        API["Route handlers /api/*<br/>(auth-checked gateways)"]
-        DATA["lib/data/*<br/>Drizzle queries"]
-        PROXY["lib/ai-proxy.ts<br/>proxyToAiService()"]
-    end
-
-    subgraph Py["ai-service · FastAPI · :8100  (stateless)"]
-        TUTOR["tutor.py · chat"]
-        VOICE["voice.py · Whisper STT + TTS"]
-        REPORT["report.py · report narrative"]
-        RECO["recognition.py · TF + MediaPipe"]
-        SIGNS["signs.py · manifest lookup"]
-    end
-
-    SUPA[("Supabase<br/>Postgres + Auth + Storage")]
-    OPENAI["OpenAI API<br/>gpt-4o-mini · whisper-1 · tts-1"]
-
-    Browser --> MW --> UI
-    Browser -->|fetch /api/*| API
-    API --> DATA --> SUPA
-    UI --> DATA
-    API -->|HTTP + user context| PROXY --> Py
-    TUTOR --> OPENAI
-    VOICE --> OPENAI
-    REPORT --> OPENAI
-    MW -->|getUser| SUPA
-```
-
-**Why two services?** All *data* (auth, courses, progress, analytics SQL) lives in
-TypeScript; all *AI/ML* (LLM, speech, computer-vision) lives in Python. This keeps the
-heavy ML dependencies isolated and lets each side scale and deploy on its own.
-
----
-
-## Repository structure
-
-```
-LearnSign_pro_/
-├── learnsign-next/            # Next.js web app (frontend + gateway API)
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (auth)/        # login, register, forgot-password
-│   │   │   ├── (site)/        # home, about, community, courses, learn,
-│   │   │   │                  #   packages, dashboard, tutor, quiz, report
-│   │   │   ├── auth/          # callback route + update-password
-│   │   │   └── api/           # learning/events, ml/recognize, quiz/submit,
-│   │   │                      #   report, tutor/chat, voice/chat, voice/text-to-speech
-│   │   ├── components/        # layout, auth, learn, tutor, quiz, report,
-│   │   │                      #   dashboard, packages, marketing, motion, ui
-│   │   ├── lib/               # auth, db (Drizzle), supabase, data/*, ai-proxy,
-│   │   │                      #   validations, utils
-│   │   ├── server/            # auth-actions.ts (server actions)
-│   │   └── middleware.ts      # session refresh + protected-route guard
-│   ├── drizzle/              # SQL migrations + manual/ RLS & trigger SQL
-│   ├── scripts/             # seed, import-users, apply-sql, smoke-http, verify-db
-│   └── public/assets/       # videos/ (signs *.webm + course *.mp4), imgs/
-│
-├── ai-service/                # Python FastAPI AI service
-│   ├── app/
-│   │   ├── main.py           # FastAPI app + routes
-│   │   ├── config.py         # env + OpenAI presence
-│   │   ├── schemas.py        # Pydantic request/response models
-│   │   ├── tutor.py          # chat core + OpenAI integration
-│   │   ├── language.py       # regional → English-sign translation
-│   │   ├── signs.py          # sign-video manifest lookup
-│   │   ├── voice.py          # Whisper STT + TTS
-│   │   ├── report.py         # parent-report narrative
-│   │   ├── recognition.py    # TF + MediaPipe sign recognition (lazy-loaded)
-│   │   ├── data/             # sign_translations.json, signs_manifest.json, tutor_prompt.txt
-│   │   └── models/           # sign_language_numbers_letters.h5
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── docs/screenshots/          # images embedded in this README
-└── README.md                  # ← this file
-```
-
----
-
-## Tech stack
-
-**Web (`learnsign-next`)**
-- Next.js 15 (App Router, RSC), React 19, TypeScript 5.7
-- Tailwind CSS 3 + shadcn/ui (new-york style) · framer-motion (animation) · lucide-react (icons)
-- TanStack Query (configured) · Zod (validation) · recharts (charts)
-- Drizzle ORM over `postgres-js` · `@supabase/ssr` + `@supabase/supabase-js`
-
-**AI service (`ai-service`)**
-- Python 3.10–3.12 · FastAPI + Uvicorn · Pydantic v2
-- OpenAI SDK — `gpt-4o-mini` (chat & report), `whisper-1` (STT), `tts-1` (TTS)
-- TensorFlow 2.16.2 + `tf-keras` 2.16.0 + MediaPipe 0.10.14 + OpenCV + NumPy (lazy-loaded for `/recognize`)
-
-**Platform**
-- Supabase — Postgres (data), Auth (email/password + Google OAuth), Storage
-- Brand colour: lavender **`#7C6FDB`**
-
-> ⚠️ **Pinned ML deps — do not bump.** TensorFlow/MediaPipe require **Python ≤ 3.12**
-> (not 3.13/3.14). MediaPipe must stay `0.10.14` (later versions removed the
-> `mp.solutions` API), and `protobuf` must stay `4.x` (`>=4.25.3,<5`). See
-> `ai-service/requirements.txt`.
 
 ---
 
@@ -308,6 +197,117 @@ Everything here is computed from the `learning_events` and `quiz_attempts` table
 | `/tutor` | Public link, **redirects to login** | guarded by middleware |
 | `/dashboard` `/quiz` `/report` | **Protected** | guarded by middleware |
 | `/login` `/register` `/forgot-password` `/auth/update-password` | Auth flow | |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Browser["🌐 Browser<br/>(React UI)"]
+
+    subgraph Next["learnsign-next · Next.js 15 + TypeScript · :3000"]
+        UI["UI / Pages<br/>(App Router, RSC + client components)"]
+        MW["middleware.ts<br/>session refresh + route guards"]
+        API["Route handlers /api/*<br/>(auth-checked gateways)"]
+        DATA["lib/data/*<br/>Drizzle queries"]
+        PROXY["lib/ai-proxy.ts<br/>proxyToAiService()"]
+    end
+
+    subgraph Py["ai-service · FastAPI · :8100  (stateless)"]
+        TUTOR["tutor.py · chat"]
+        VOICE["voice.py · Whisper STT + TTS"]
+        REPORT["report.py · report narrative"]
+        RECO["recognition.py · TF + MediaPipe"]
+        SIGNS["signs.py · manifest lookup"]
+    end
+
+    SUPA[("Supabase<br/>Postgres + Auth + Storage")]
+    OPENAI["OpenAI API<br/>gpt-4o-mini · whisper-1 · tts-1"]
+
+    Browser --> MW --> UI
+    Browser -->|fetch /api/*| API
+    API --> DATA --> SUPA
+    UI --> DATA
+    API -->|HTTP + user context| PROXY --> Py
+    TUTOR --> OPENAI
+    VOICE --> OPENAI
+    REPORT --> OPENAI
+    MW -->|getUser| SUPA
+```
+
+**Why two services?** All *data* (auth, courses, progress, analytics SQL) lives in
+TypeScript; all *AI/ML* (LLM, speech, computer-vision) lives in Python. This keeps the
+heavy ML dependencies isolated and lets each side scale and deploy on its own.
+
+---
+
+## Repository structure
+
+```
+LearnSign_pro_/
+├── learnsign-next/            # Next.js web app (frontend + gateway API)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (auth)/        # login, register, forgot-password
+│   │   │   ├── (site)/        # home, about, community, courses, learn,
+│   │   │   │                  #   packages, dashboard, tutor, quiz, report
+│   │   │   ├── auth/          # callback route + update-password
+│   │   │   └── api/           # learning/events, ml/recognize, quiz/submit,
+│   │   │                      #   report, tutor/chat, voice/chat, voice/text-to-speech
+│   │   ├── components/        # layout, auth, learn, tutor, quiz, report,
+│   │   │                      #   dashboard, packages, marketing, motion, ui
+│   │   ├── lib/               # auth, db (Drizzle), supabase, data/*, ai-proxy,
+│   │   │                      #   validations, utils
+│   │   ├── server/            # auth-actions.ts (server actions)
+│   │   └── middleware.ts      # session refresh + protected-route guard
+│   ├── drizzle/              # SQL migrations + manual/ RLS & trigger SQL
+│   ├── scripts/             # seed, import-users, apply-sql, smoke-http, verify-db
+│   └── public/assets/       # videos/ (signs *.webm + course *.mp4), imgs/
+│
+├── ai-service/                # Python FastAPI AI service
+│   ├── app/
+│   │   ├── main.py           # FastAPI app + routes
+│   │   ├── config.py         # env + OpenAI presence
+│   │   ├── schemas.py        # Pydantic request/response models
+│   │   ├── tutor.py          # chat core + OpenAI integration
+│   │   ├── language.py       # regional → English-sign translation
+│   │   ├── signs.py          # sign-video manifest lookup
+│   │   ├── voice.py          # Whisper STT + TTS
+│   │   ├── report.py         # parent-report narrative
+│   │   ├── recognition.py    # TF + MediaPipe sign recognition (lazy-loaded)
+│   │   ├── data/             # sign_translations.json, signs_manifest.json, tutor_prompt.txt
+│   │   └── models/           # sign_language_numbers_letters.h5
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── docs/screenshots/          # images embedded in this README
+└── README.md                  # ← this file
+```
+
+---
+
+## Tech stack
+
+**Web (`learnsign-next`)**
+- Next.js 15 (App Router, RSC), React 19, TypeScript 5.7
+- Tailwind CSS 3 + shadcn/ui (new-york style) · framer-motion (animation) · lucide-react (icons)
+- TanStack Query (configured) · Zod (validation) · recharts (charts)
+- Drizzle ORM over `postgres-js` · `@supabase/ssr` + `@supabase/supabase-js`
+
+**AI service (`ai-service`)**
+- Python 3.10–3.12 · FastAPI + Uvicorn · Pydantic v2
+- OpenAI SDK — `gpt-4o-mini` (chat & report), `whisper-1` (STT), `tts-1` (TTS)
+- TensorFlow 2.16.2 + `tf-keras` 2.16.0 + MediaPipe 0.10.14 + OpenCV + NumPy (lazy-loaded for `/recognize`)
+
+**Platform**
+- Supabase — Postgres (data), Auth (email/password + Google OAuth), Storage
+- Brand colour: lavender **`#7C6FDB`**
+
+> ⚠️ **Pinned ML deps — do not bump.** TensorFlow/MediaPipe require **Python ≤ 3.12**
+> (not 3.13/3.14). MediaPipe must stay `0.10.14` (later versions removed the
+> `mp.solutions` API), and `protobuf` must stay `4.x` (`>=4.25.3,<5`). See
+> `ai-service/requirements.txt`.
 
 ---
 
