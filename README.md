@@ -17,7 +17,6 @@
 
 ## Table of contents
 
-
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -25,18 +24,10 @@
 - [Tech stack](#tech-stack)
 - [How the key flows work](#how-the-key-flows-work)
 - [Data model](#data-model)
-- [API reference](#api-reference)
-- [Getting started](#getting-started)
-- [Environment variables](#environment-variables)
-- [Database, migrations & RLS](#database-migrations--rls)
-- [Scripts](#scripts)
-- [Sign data & ML recognition (reality check)](#sign-data--ml-recognition-reality-check)
-- [Design system](#design-system)
 
 ---
 
 ## Overview
-
 
 LearnSign teaches Indian Sign Language through short video lessons, an interactive AI
 tutor (text **and** voice, in English / Hindi / Kannada / Telugu), and a webcam quiz
@@ -55,7 +46,6 @@ The system is split into **two independently deployable services**:
 > service. Python never touches the database or auth — Next passes everything it needs.
 
 ---
-
 
 ## Features
 
@@ -102,7 +92,6 @@ Track streaks, weekly activity, and quiz stats — plus a printable parent repor
 
 ## Architecture
 
-
 ```mermaid
 flowchart TD
     Browser["🌐 Browser<br/>(React UI)"]
@@ -144,7 +133,6 @@ heavy ML dependencies isolated and lets each side scale and deploy on its own.
 ---
 
 ## Repository structure
-
 
 ```
 LearnSign_pro_/
@@ -191,7 +179,6 @@ LearnSign_pro_/
 
 ## Tech stack
 
-
 **Web (`learnsign-next`)**
 - Next.js 15 (App Router, RSC), React 19, TypeScript 5.7
 - Tailwind CSS 3 + shadcn/ui (new-york style) · framer-motion (animation) · lucide-react (icons)
@@ -215,7 +202,6 @@ LearnSign_pro_/
 ---
 
 ## How the key flows work
-
 
 ### Authentication (Supabase SSR)
 
@@ -280,7 +266,6 @@ sequenceDiagram
 ---
 
 ## Data model
-
 
 ```mermaid
 erDiagram
@@ -350,173 +335,3 @@ erDiagram
 - **`learning_events`** is append-only telemetry; analytics aggregate over it.
 - **Note:** `course_id` columns are plain text with **no foreign key** to `courses`, and
   `packages.course_ids` is a text array (no referential integrity).
-
----
-
-## API reference
-
-
-### Next.js gateway routes (`learnsign-next/src/app/api`)
-
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `POST` | `/api/learning/events` | ✅ session | Record a learning event; roll up `user_progress` + streak |
-| `POST` | `/api/quiz/submit` | ✅ session | Record a quiz attempt (auto-increment `attempt_no`) |
-| `GET`  | `/api/report` | ✅ session | Gather report data + AI narrative (5-min cache; `?refresh=1`) |
-| `POST` | `/api/tutor/chat` | ✅ session | Proxy to Python `/tutor/chat` with DB-derived profile |
-| `POST` | `/api/voice/chat` | ✅ session | Proxy to Python `/voice/chat` (audio → reply + speech) |
-| `POST` | `/api/voice/text-to-speech` | ✅ session | Proxy to Python `/voice/tts` |
-| `POST`/`GET` | `/api/ml/recognize` | ⚠️ **public** | Proxy to Python `/recognize`; GET = health check |
-| `GET`  | `/auth/callback` | public | OAuth / email-confirm / password-reset code exchange |
-
-### Python AI service endpoints (`ai-service/app/main.py`)
-
-| Method | Path | Purpose | Needs OpenAI key |
-|---|---|---|---|
-| `GET`  | `/health` | Liveness + whether OpenAI is configured | – |
-| `POST` | `/tutor/chat` | Tutor chat (sign lookup works without a key) | optional |
-| `POST` | `/voice/chat` | Whisper STT → tutor → TTS | ✅ (503 without) |
-| `POST` | `/voice/tts` | Text → speech (mp3 base64) | ✅ (503 without) |
-| `POST` | `/report/insights` | Parent-report narrative (falls back to template) | optional |
-| `POST` | `/recognize` | Sign recognition from webcam frames | – |
-
----
-
-## Getting started
-
-
-**Prerequisites:** Node 18+, Python 3.10–3.12, a Supabase project, and (optionally) an
-OpenAI API key. Sign-video lookup works without OpenAI; chat/voice/report need a valid key.
-
-### 1. AI service
-
-```bash
-cd ai-service
-python3.10 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # add OPENAI_API_KEY (optional but recommended)
-python -m app.main            # → http://localhost:8100
-```
-
-### 2. Web app (new terminal)
-
-```bash
-cd learnsign-next
-npm install
-cp .env.local.example .env.local   # add Supabase keys + DATABASE_URL + AI_SERVICE_URL
-npm run db:migrate                 # apply drizzle/*.sql migrations
-node scripts/apply-sql.mjs drizzle/manual/0001_profiles_rls_trigger.sql
-node scripts/apply-sql.mjs drizzle/manual/0002_courses_packages_rls.sql
-node scripts/apply-sql.mjs drizzle/manual/0003_progress_rls.sql
-node scripts/apply-sql.mjs drizzle/manual/0004_oauth_profile.sql
-node scripts/seed.mjs              # seed 8 courses + 3 packages
-npm run dev                        # → http://localhost:3000
-```
-
-> **Google login** also requires enabling the Google provider in the Supabase dashboard
-> (Auth → Providers) and adding `http://localhost:3000/auth/callback` (and your prod URL)
-> to Auth → URL Configuration.
-
----
-
-## Environment variables
-
-
-### `learnsign-next/.env.local`
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (used by `import-users` script) |
-| `DATABASE_URL` | Postgres connection string — **use the Supabase pooler** (`?sslmode=require`) |
-| `AI_SERVICE_URL` | Base URL of the Python service (default `http://localhost:8100`) |
-
-### `ai-service/.env`
-
-| Variable | Description |
-|---|---|
-| `OPENAI_API_KEY` | OpenAI key for chat/voice/report (optional) |
-| `AI_SERVICE_PORT` | Port to bind (default `8100`) |
-
-> **Networking note:** Supabase's direct DB host is IPv6-only and may not resolve on all
-> networks. Use the **Session pooler** host
-> (`aws-1-…-pooler.supabase.com:5432`, user `postgres.<project-ref>`). The app's runtime
-> client uses `prepare:false` for pooler compatibility.
-
----
-
-## Database, migrations & RLS
-
-
-Schema lives in `learnsign-next/src/lib/db/schema.ts` (Drizzle). Workflow:
-
-```bash
-npm run db:generate   # generate SQL from schema changes
-npm run db:migrate    # apply generated migrations
-npm run db:studio     # browse data
-```
-
-| File | Contents |
-|---|---|
-| `drizzle/0000_faithful_gauntlet.sql` | `profiles` |
-| `drizzle/0001_first_blockbuster.sql` | `courses`, `packages` |
-| `drizzle/0002_unusual_dakota_north.sql` | `user_progress`, `learning_events`, `quiz_attempts` |
-| `drizzle/manual/0001_*` | FK to `auth.users`, RLS on profiles, `handle_new_user()` + `set_updated_at()` triggers |
-| `drizzle/manual/0002_*` | Public-read RLS on courses/packages |
-| `drizzle/manual/0003_*` | FKs + owner-only RLS on progress/events/quiz tables |
-| `drizzle/manual/0004_*` | OAuth-aware `handle_new_user()` (reads `full_name` from Google) |
-
-> ⚠️ The `drizzle/manual/*.sql` files are **not** tracked by the migration journal — apply
-> them with `node scripts/apply-sql.mjs <file>` after `db:migrate`.
->
-> The runtime Drizzle client connects as the `postgres` role and **bypasses RLS** — every
-> query must scope by `user.id` itself (the data layer does this). RLS is the safety net.
-
----
-
-## Scripts
-
-
-`learnsign-next/scripts/`:
-
-| Script | Purpose |
-|---|---|
-| `seed.mjs` | Seed 8 courses + 3 packages (destructive: deletes existing first) |
-| `import-users.ts` | One-off legacy MongoDB → Supabase Auth migration (sends reset emails; passwords **not** carried over) |
-| `apply-sql.mjs <file>` | Run an arbitrary SQL file (used for the manual RLS/trigger SQL) |
-| `smoke-http.mjs` | HTTP smoke test against a running dev server (default `:3100`) |
-| `verify-db.mjs` | Read-only DB assertions (columns, RLS, triggers, policies) |
-
----
-
-## Sign data & ML recognition (reality check)
-
-
-This README is honest about what the ML actually does today:
-
-- **Sign-video library:** `ai-service/app/data/signs_manifest.json` maps **354** uppercased
-  words → `.webm` video paths (`0–9`, `A–Z`, and ~318 word signs). The tutor/translator
-  feature is a **dictionary lookup**, not ML — it returns the matching video files.
-- **Regional translation:** `sign_translations.json` holds regional→English maps —
-  Hindi (235), Kannada (260), Telugu (165) entries — used to turn regional input into
-  English sign tokens.
-- **Webcam recognition (`recognition.py`):** a small Keras model
-  (`sign_language_numbers_letters.h5`) over MediaPipe hand landmarks. It recognises **only
-  6 classes** — `one, two, three, a, b, c` (labels are hardcoded; the original label file
-  was lost). The quiz is built around these. This is **not** a 350-sign recogniser.
-
----
-
-## Design system
-
-
-- **Brand colour:** lavender `#7C6FDB` (`--primary`), with light/dark variants and a kid
-  palette (orange/green/blue/pink/yellow). Full dark-mode theme included.
-- **Fonts:** Poppins (body, `--font-sans`) + Fredoka (display headings, `--font-display`).
-- **Animation:** framer-motion (scroll reveals, animated counters, nav pill, page motion)
-  plus CSS keyframes (`float`, `blob`, `wiggle`, `gradient-x`, `shimmer`, …).
-- **Utilities** (in `globals.css`): `.text-gradient`, `.card-base`, `.card-interactive`,
-  `.chip`, `.eyebrow`, `.bg-dots`.
-
-<p align="center"><sub>Made with 💜 for the deaf and hard-of-hearing community.</sub></p>
