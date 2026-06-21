@@ -14,10 +14,10 @@ import { join, relative, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = process.env.MEDIA_BUCKET || "media";
-if (!URL || !KEY) {
+if (!SUPABASE_URL || !KEY) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
   process.exit(1);
 }
@@ -26,7 +26,7 @@ const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const VIDEOS_DIR = join(root, "public", "assets", "videos");
 const CONTENT_TYPE = { ".webm": "video/webm", ".mp4": "video/mp4" };
 
-const supabase = createClient(URL, KEY, { auth: { persistSession: false } });
+const supabase = createClient(SUPABASE_URL, KEY, { auth: { persistSession: false } });
 
 async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -60,7 +60,7 @@ async function main() {
   }
   console.log(`\nDone: ${ok} uploaded, ${fail} failed → bucket "${BUCKET}".`);
   console.log(
-    `Set NEXT_PUBLIC_MEDIA_BASE_URL=${URL}/storage/v1/object/public/${BUCKET}`,
+    `Set NEXT_PUBLIC_MEDIA_BASE_URL=${SUPABASE_URL}/storage/v1/object/public/${BUCKET}`,
   );
 }
 
