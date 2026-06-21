@@ -1,0 +1,35 @@
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { RegisterForm } from "./register-form";
+import { GoogleButton } from "@/components/auth/google-button";
+import { AuthDivider } from "@/components/auth/auth-divider";
+
+export const metadata = { title: "Create account" };
+
+export default function RegisterPage() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl">Create your account</CardTitle>
+        <CardDescription>Start learning Indian Sign Language.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <GoogleButton />
+        <AuthDivider />
+        <RegisterForm />
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link href="/login" className="text-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
