@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { profiles, type Profile } from "@/lib/db/schema";
@@ -30,10 +29,3 @@ export const getProfile = cache(async (): Promise<ProfileWithEmail | null> => {
   if (!profile) return null;
   return { ...profile, email: user.email ?? "" };
 });
-
-/** Guard for server components/actions — redirects to /login if signed out. */
-export async function requireUser() {
-  const user = await getUser();
-  if (!user) redirect("/login");
-  return user;
-}

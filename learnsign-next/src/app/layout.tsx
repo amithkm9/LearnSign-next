@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Poppins, Fredoka } from "next/font/google";
-import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -31,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} ${fredoka.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );
