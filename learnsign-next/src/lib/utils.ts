@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Resolve a media path (sign/course videos) to its hosted URL. In production the
+ * ~340 MB of videos are served from object storage / a CDN via
+ * NEXT_PUBLIC_MEDIA_BASE_URL; locally it's empty so paths stay relative to /public.
+ * Pass an already-absolute URL through untouched.
+ */
+export function mediaUrl(path: string): string {
+  if (!path || /^https?:\/\//.test(path)) return path;
+  const base = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "";
+  return base ? `${base.replace(/\/$/, "")}${path}` : path;
+}
+
+/**
  * Returns `path` only if it is a safe same-origin relative path, otherwise the
  * fallback. Prevents open-redirects: rejects absolute URLs, protocol-relative
  * (`//host`), backslash tricks (`/\host`) and control characters. Use for any

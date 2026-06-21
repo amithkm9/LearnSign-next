@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, RotateCcw, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, mediaUrl } from "@/lib/utils";
 
 type Question = {
   target: string;
@@ -206,7 +206,7 @@ export function QuizPlayer() {
             <video
               ref={demoRef}
               key={current.video}
-              src={current.video}
+              src={mediaUrl(current.video)}
               poster={current.poster}
               className="h-full w-full object-contain"
               autoPlay

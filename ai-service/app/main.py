@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import PORT, has_openai
+from .config import INTERNAL_API_TOKEN, PORT, has_openai
 from .language import SUPPORTED_LANGUAGES
 from .report import generate_insights
 from .schemas import (
@@ -27,6 +27,12 @@ app.add_middleware(
 )
 
 
+def require_internal_token(x_internal_token: str | None = Header(default=None)) -> None:
+    """Reject calls that don't carry the gateway's shared secret (when one is set)."""
+    if INTERNAL_API_TOKEN and x_internal_token != INTERNAL_API_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 def _history(items) -> list[dict]:
     return [{"role": m.role, "content": m.content} for m in items]
 
@@ -36,7 +42,7 @@ def health():
     return {"status": "healthy", "openai": has_openai()}
 
 
-@app.post("/tutor/chat", response_model=ChatResponse)
+@app.post("/tutor/chat", response_model=ChatResponse, dependencies=[Depends(require_internal_token)])
 def tutor_chat(req: ChatRequest):
     result = process_message(
         req.message,
@@ -47,26 +53,26 @@ def tutor_chat(req: ChatRequest):
     return {"success": True, "response": result["response"], "language": result["language"]}
 
 
-@app.post("/report/insights")
+@app.post("/report/insights", dependencies=[Depends(require_internal_token)])
 def report_insights(req: ReportInsightsRequest):
     return {"success": True, "insights": generate_insights(req.model_dump())}
 
 
-@app.post("/recognize")
+@app.post("/recognize", dependencies=[Depends(require_internal_token)])
 def recognize_endpoint(req: RecognizeRequest):
     from .recognition import recognize
 
     return recognize(req.frames)
 
 
-@app.post("/voice/tts")
+@app.post("/voice/tts", dependencies=[Depends(require_internal_token)])
 def voice_tts(req: TtsRequest):
     if not has_openai():
         raise HTTPException(status_code=503, detail="Voice features need OPENAI_API_KEY")
     return {"success": True, "audio": text_to_speech(req.text, req.voice), "format": "mp3"}
 
 
-@app.post("/voice/chat", response_model=VoiceChatResponse)
+@app.post("/voice/chat", response_model=VoiceChatResponse, dependencies=[Depends(require_internal_token)])
 def voice_chat(req: VoiceChatRequest):
     if not has_openai():
         raise HTTPException(status_code=503, detail="Voice features need OPENAI_API_KEY")

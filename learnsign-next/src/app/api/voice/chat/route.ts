@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getUserTutorProfile } from "@/lib/data/tutor-profile";
 import { proxyToAiService } from "@/lib/ai-proxy";
+import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 // ~10 MB of base64 (≈7.5 MB of audio) is plenty for a short spoken turn.
 const MAX_AUDIO_CHARS = 10_000_000;
 const MAX_HISTORY = 20;
+export const maxDuration = 60; // Whisper → GPT → TTS is the slowest path
 
 /** Gateway → Python /voice/chat (Whisper → tutor → TTS). */
 export async function POST(req: Request) {
@@ -13,6 +15,9 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  const rl = rateLimit(`voice:${user.id}`, 10);
+  if (!rl.ok) return tooMany(rl.retryAfter);
 
   let body: {
     audio?: string;

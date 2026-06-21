@@ -17,7 +17,13 @@ export async function proxyToAiService(path: string, body: unknown) {
   try {
     const upstream = await fetch(`${AI_SERVICE_URL}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Shared secret so only this gateway can reach the public AI service.
+        ...(process.env.INTERNAL_API_TOKEN
+          ? { "X-Internal-Token": process.env.INTERNAL_API_TOKEN }
+          : {}),
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });

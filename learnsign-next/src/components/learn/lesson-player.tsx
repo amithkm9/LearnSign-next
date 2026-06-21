@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RotateCcw, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { mediaUrl } from "@/lib/utils";
 
 const HEARTBEAT_MS = 15_000;
 const COMPLETE_THRESHOLD = 90; // % watched counts as completed (matches legacy)
@@ -165,7 +166,7 @@ export function LessonPlayer({
       <div className="relative">
         <video
           ref={videoRef}
-          src={src}
+          src={mediaUrl(src)}
           title={title}
           controls
           controlsList="nodownload"
