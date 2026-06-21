@@ -1,0 +1,64 @@
+{
+  "_comment": "Human synonyms (lowercase) -> manifest sign key (uppercase). Keys MUST exist in signs_manifest.json. The resolver also auto-handles structural key quirks (PLAY_0A, 'EVENING (1)', NO-ONE) via the alias index, so those don't need entries here.",
+
+  "mom": "MOTHER", "mommy": "MOTHER", "mum": "MOTHER", "mummy": "MOTHER",
+  "mumma": "MOTHER", "maa": "MOTHER", "ma": "MOTHER", "mama": "MOTHER", "mommies": "MOTHER",
+  "dad": "FATHER", "daddy": "FATHER", "papa": "FATHER", "pa": "FATHER",
+  "pappa": "FATHER", "abba": "FATHER", "dada": "FATHER",
+  "bro": "BROTHER", "sis": "SISTER",
+  "kid": "CHILD", "kids": "CHILD", "children": "CHILD", "kiddo": "CHILD", "toddler": "CHILD",
+  "infant": "BABY", "newborn": "BABY",
+
+  "hey": "HI", "hiya": "HI", "hii": "HI",
+  "goodbye": "BYE", "bye-bye": "BYE", "byebye": "BYE", "bbye": "BYE", "see you": "BYE",
+  "welcome": "WELCOME",
+  "ok": "OKAY", "okey": "OKAY", "k": "OKAY",
+  "alright": "ALRIGHT", "fine": "FINE",
+  "awesome": "AWESOME", "great": "GREAT", "amazing": "AMAZING", "cool": "COOL", "nice": "NICE",
+  "good": "GOOD",
+
+  "glad": "HAPPY", "joy": "HAPPY", "joyful": "HAPPY",
+  "unhappy": "SAD", "upset": "SAD", "crying": "SAD",
+  "mad": "ANGRY", "annoyed": "ANGRY", "furious": "ANGRY",
+  "sleepy": "SLEEP", "nap": "SLEEP", "bedtime": "SLEEP",
+  "scared": "NERVOUS", "afraid": "NERVOUS",
+  "excited": "EXCITED", "proud": "PROUD",
+
+  "food": "FOOD", "meal": "FOOD", "snack": "FOOD",
+  "eating": "EAT", "ate": "EAT",
+  "drinking": "DRINK", "thirsty": "DRINK",
+  "h2o": "WATER",
+  "apple": "APPLE", "bread": "BREAD", "fruit": "FRUIT", "fish": "FISH",
+
+  "potty": "BATHROOM", "toilet": "BATHROOM", "washroom": "BATHROOM",
+  "restroom": "BATHROOM", "loo": "BATHROOM", "bathroom": "BATHROOM",
+  "bed": "BEDROOM", "bedroom": "BEDROOM",
+  "house": "HOME", "home": "HOME",
+  "cell": "MOBILE", "cellphone": "MOBILE", "smartphone": "MOBILE", "mobile": "MOBILE",
+
+  "puppy": "DOG", "doggy": "DOG", "doggie": "DOG",
+  "kitty": "CAT", "kitten": "CAT", "kitti": "CAT",
+  "birdie": "BIRD",
+
+  "buddy": "FRIEND", "pal": "FRIEND", "mate": "FRIEND",
+  "boy": "BOY", "girl": "GIRL",
+
+  "wait": "WAIT", "stop": "STOP", "help": "HELP",
+  "look": "LOOK", "watch": "WATCH", "listen": "LISTEN", "see": "SEE",
+  "read": "READ", "write": "WRITE", "draw": "ART",
+  "run": "RUN", "jump": "JUMP", "walk": "WALK", "sit": "SIT", "stand": "STAND",
+  "come": "MEET", "play": "PLAY_0A", "game": "GAME",
+
+  "school": "SCHOOL", "class": "CLASS", "book": "BOOK", "teacher": "SCHOOL",
+  "doctor": "DOCTOR", "money": "MONEY", "market": "MARKET", "shop": "MARKET", "buy": "BUY",
+
+  "morning": "MORNING", "afternoon": "AFTERNOON", "evening": "EVENING",
+  "night": "NIGHT", "today": "TODAY", "tomorrow": "TOMORROW", "yesterday": "YESTERDAY",
+  "now": "TODAY", "day": "DAY", "time": "TIME",
+
+  "what": "WHAT", "who": "WHO", "where": "PLACE", "when": "WHEN", "why": "WHY", "how": "HOW",
+  "yes": "AGREE", "agree": "AGREE", "no": "DISAGREE", "disagree": "DISAGREE",
+  "know": "KNOW", "understand": "UNDERSTAND", "remember": "REMEMBER", "forget": "FORGET",
+  "give": "GIVE_0A", "take": "TAKE", "bring": "BRING", "share": "SHARE",
+  "name": "NAME", "you": "YOU", "we": "WE"
+}

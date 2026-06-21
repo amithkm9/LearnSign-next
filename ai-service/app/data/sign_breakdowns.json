@@ -1,0 +1,15 @@
+{
+  "_comment": "Optional plain-language 'how to make this sign' notes, keyed by manifest sign key. Shown under the demo video. NOTE: these describe Indian Sign Language (ISL) and should be reviewed by an ISL expert before relying on specifics. Add entries freely; missing keys simply show no breakdown.",
+
+  "A": "Make a fist with your thumb resting against the side.",
+  "B": "Hold your hand flat and open, fingers together, thumb tucked in.",
+  "C": "Curve your hand into the shape of the letter C.",
+  "O": "Round your fingers and thumb together into an O shape.",
+  "L": "Point your index finger up and stick your thumb out to make an L.",
+
+  "HELLO": "A friendly greeting near the head — keep it relaxed and smile.",
+  "BYE": "A simple waving motion, just like saying goodbye.",
+  "YOU": "Point clearly toward the person you mean.",
+  "GOOD": "A positive, open gesture moving outward from yourself.",
+  "HAPPY": "An upward, lively motion near the chest — let your face smile too."
+}
