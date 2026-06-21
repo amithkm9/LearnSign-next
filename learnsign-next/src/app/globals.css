@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  LearnSign design tokens — ported from the legacy lavender theme.
+  Brand: #7C6FDB (primary), #9B8FF5 (light), #5A4DBF (dark),
+         #E8E5F8 (accent), #FF9F4A (orange), #36B37E (green).
+  shadcn/ui consumes these as `hsl(var(--token))`.
+*/
+@layer base {
+  :root {
+    --background: 250 100% 99%;
+    --foreground: 222 47% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 13%;
+
+    --primary: 247 60% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 249 58% 94%;
+    --secondary-foreground: 247 45% 33%;
+
+    --muted: 250 40% 96%;
+    --muted-foreground: 222 12% 45%;
+
+    --accent: 249 58% 94%;
+    --accent-foreground: 247 45% 33%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 247 30% 90%;
+    --input: 247 30% 90%;
+    --ring: 247 60% 65%;
+
+    --radius: 0.65rem;
+
+    /* Brand accents (raw, used directly via `brand-*` utilities) */
+    --brand: 247 60% 65%;
+    --brand-light: 249 86% 76%;
+    --brand-dark: 248 45% 53%;
+    --brand-orange: 28 100% 64%;
+    --brand-green: 152 53% 46%;
+    --brand-blue: 227 100% 65%;
+    --brand-pink: 340 90% 70%;
+    --brand-yellow: 42 100% 62%;
+  }
+
+  .dark {
+    --background: 248 30% 8%;
+    --foreground: 250 40% 96%;
+
+    --card: 248 28% 11%;
+    --card-foreground: 250 40% 96%;
+
+    --popover: 248 28% 11%;
+    --popover-foreground: 250 40% 96%;
+
+    --primary: 249 76% 72%;
+    --primary-foreground: 248 30% 10%;
+
+    --secondary: 248 20% 18%;
+    --secondary-foreground: 250 40% 96%;
+
+    --muted: 248 20% 18%;
+    --muted-foreground: 250 15% 65%;
+
+    --accent: 248 20% 22%;
+    --accent-foreground: 250 40% 96%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 248 20% 22%;
+    --input: 248 20% 22%;
+    --ring: 249 76% 72%;
+
+    --brand: 249 76% 72%;
+    --brand-light: 249 86% 80%;
+    --brand-dark: 248 45% 53%;
+    --brand-orange: 28 100% 64%;
+    --brand-green: 152 53% 46%;
+    --brand-blue: 227 100% 65%;
+    --brand-pink: 340 90% 70%;
+    --brand-yellow: 42 100% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* Playful gradient text for headlines */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary via-brand-pink to-brand-orange bg-clip-text text-transparent;
+  }
+  /* Subtle dotted background texture */
+  .bg-dots {
+    background-image: radial-gradient(hsl(var(--primary) / 0.1) 1.2px, transparent 1.2px);
+    background-size: 22px 22px;
+  }
+  /* Animated multi-stop gradient (pair with animate-gradient-x) */
+  .bg-gradient-animated {
+    background-size: 200% 200%;
+  }
+
+  /* ---- Reusable card system ---- */
+  .card-base {
+    @apply rounded-3xl border border-border/70 bg-card shadow-soft;
+  }
+  .card-interactive {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/30 hover:shadow-soft-lg;
+  }
+  /* Small label pill */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  /* Section overline / kicker */
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-primary;
+  }
+}
