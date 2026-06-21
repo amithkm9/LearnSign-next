@@ -1,7 +1,7 @@
 import json
 
 from .config import has_openai
-from .tutor import client, _strip_code_fence
+from .llm import get_openai_client, strip_code_fence
 
 
 def _fallback(payload: dict) -> dict:
@@ -31,7 +31,7 @@ def generate_insights(payload: dict) -> dict:
     if not has_openai():
         return _fallback(payload)
     try:
-        completion = client().chat.completions.create(
+        completion = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -53,7 +53,7 @@ def generate_insights(payload: dict) -> dict:
             max_tokens=900,
             temperature=0.7,
         )
-        raw = _strip_code_fence((completion.choices[0].message.content or "").strip())
+        raw = strip_code_fence((completion.choices[0].message.content or "").strip())
         data = json.loads(raw)
         result = _fallback(payload)
         result.update({k: v for k, v in data.items() if v})

@@ -10,7 +10,8 @@ library so it can never invent a sign that has no video.
 import json
 import re
 
-from .config import DATA_DIR, OPENAI_API_KEY, has_openai
+from .config import DATA_DIR, has_openai
+from .llm import get_openai_client, strip_code_fence
 from .signs import _MANIFEST, all_signs
 
 # ---- curated human synonyms (lowercase phrase -> manifest key) ----
@@ -115,18 +116,6 @@ def resolve_sign_item(word: str) -> dict | None:
     return item
 
 
-_client = None
-
-
-def _openai():
-    global _client
-    if _client is None and has_openai():
-        from openai import OpenAI
-
-        _client = OpenAI(api_key=OPENAI_API_KEY)
-    return _client
-
-
 def llm_resolve_query(message: str, language: str = "en") -> list[str] | None:
     """
     Grounded extraction for conversational asks. Returns an ordered list of
@@ -137,7 +126,7 @@ def llm_resolve_query(message: str, language: str = "en") -> list[str] | None:
         return None
     try:
         available = all_signs()
-        completion = _openai().chat.completions.create(
+        completion = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -157,10 +146,7 @@ def llm_resolve_query(message: str, language: str = "en") -> list[str] | None:
             max_tokens=150,
             temperature=0.2,
         )
-        raw = (completion.choices[0].message.content or "").strip()
-        if raw.startswith("```"):
-            raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.I)
-            raw = re.sub(r"\n?```$", "", raw).strip()
+        raw = strip_code_fence((completion.choices[0].message.content or "").strip())
         tokens = json.loads(raw).get("tokens", [])
         return [t for t in tokens if isinstance(t, str) and t.strip()]
     except Exception:

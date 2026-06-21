@@ -1,7 +1,7 @@
 import base64
 import re
 
-from .tutor import client
+from .llm import get_openai_client
 
 # Emoji + markdown stripping for cleaner TTS input.
 _EMOJI = re.compile(
@@ -12,7 +12,7 @@ _EMOJI = re.compile(
 
 def speech_to_text(audio_b64: str, language: str = "en") -> str:
     audio_bytes = base64.b64decode(audio_b64)
-    transcription = client().audio.transcriptions.create(
+    transcription = get_openai_client().audio.transcriptions.create(
         model="whisper-1",
         file=("audio.webm", audio_bytes, "audio/webm"),
         language=language,
@@ -21,7 +21,7 @@ def speech_to_text(audio_b64: str, language: str = "en") -> str:
 
 
 def text_to_speech(text: str, voice: str = "nova") -> str:
-    resp = client().audio.speech.create(
+    resp = get_openai_client().audio.speech.create(
         model="tts-1",
         voice=voice,
         input=text[:4000],

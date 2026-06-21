@@ -1,7 +1,8 @@
 import json
 import re
 
-from .config import DATA_DIR, OPENAI_API_KEY, has_openai
+from .config import DATA_DIR, has_openai
+from .llm import get_openai_client, strip_code_fence
 from .signs import all_signs, find_similar, find_sign_video
 from .resolver import resolve_sign_item, llm_resolve_query, fingerspell
 from .language import (
@@ -13,17 +14,6 @@ from .language import (
 )
 
 PROMPT = (DATA_DIR / "tutor_prompt.txt").read_text(encoding="utf-8")
-
-_client = None
-
-
-def client():
-    global _client
-    if _client is None and has_openai():
-        from openai import OpenAI
-
-        _client = OpenAI(api_key=OPENAI_API_KEY)
-    return _client
 
 
 HEADER = {
@@ -113,13 +103,6 @@ def populate_prompt(profile: dict) -> str:
     return prompt
 
 
-def _strip_code_fence(text: str) -> str:
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-z]*\n?", "", text, flags=re.I)
-        text = re.sub(r"\n?```$", "", text).strip()
-    return text
-
-
 def translate_and_extract(response_text: str, language: str, original_query: str = "") -> list[dict]:
     if not response_text:
         return []
@@ -129,7 +112,7 @@ def translate_and_extract(response_text: str, language: str, original_query: str
         return extract_english_words_from_response(response_text, language)
     try:
         available = all_signs()[:100]
-        completion = client().chat.completions.create(
+        completion = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -150,7 +133,7 @@ def translate_and_extract(response_text: str, language: str, original_query: str
             max_tokens=200,
             temperature=0.3,
         )
-        result = _strip_code_fence((completion.choices[0].message.content or "").strip())
+        result = strip_code_fence((completion.choices[0].message.content or "").strip())
         concepts = json.loads(result).get("translatedConcepts", [])
         found, seen = [], set()
         for concept in concepts:
@@ -285,10 +268,10 @@ def process_message(message: str, language: str = "en", history=None, profile=No
             messages.append({"role": m["role"], "content": content})
         messages.append({"role": "user", "content": message})
 
-        completion = client().chat.completions.create(
+        completion = get_openai_client().chat.completions.create(
             model="gpt-4o-mini", messages=messages, max_tokens=800, temperature=0.7
         )
-        raw = _strip_code_fence((completion.choices[0].message.content or "").strip())
+        raw = strip_code_fence((completion.choices[0].message.content or "").strip())
         try:
             parsed = json.loads(raw)
         except Exception:
