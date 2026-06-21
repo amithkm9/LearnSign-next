@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { gatherReportData } from "@/lib/data/report";
+import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL ?? "http://localhost:8100";
 const TTL = 5 * 60 * 1000; // 5 minutes
@@ -22,6 +23,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  const rl = rateLimit(`report:${user.id}`, 10);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   const refresh = new URL(req.url).searchParams.get("refresh") === "1";
   const cached = cache.get(user.id);
   if (!refresh && cached && Date.now() - cached.t < TTL) {
@@ -34,7 +38,12 @@ export async function GET(req: Request) {
   try {
     const upstream = await fetch(`${AI_SERVICE_URL}/report/insights`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.INTERNAL_API_TOKEN
+          ? { "X-Internal-Token": process.env.INTERNAL_API_TOKEN }
+          : {}),
+      },
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     });

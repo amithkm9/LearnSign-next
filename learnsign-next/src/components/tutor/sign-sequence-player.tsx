@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, Play, Pause, Gauge, Repeat, FlipHorizontal2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, mediaUrl } from "@/lib/utils";
 
 export type SignLetter = { char: string; path: string };
 export type SignStep = {
@@ -123,7 +123,7 @@ export function SignSequencePlayer({ items }: { items: SignStep[] }) {
         <video
           ref={videoRef}
           key={current.path}
-          src={current.path}
+          src={mediaUrl(current.path)}
           className="aspect-video w-full rounded-lg bg-black transition-transform"
           style={{ transform: mirror ? "scaleX(-1)" : undefined }}
           autoPlay

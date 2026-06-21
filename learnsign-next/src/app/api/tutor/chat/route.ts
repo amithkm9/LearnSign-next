@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getUserTutorProfile } from "@/lib/data/tutor-profile";
 import { proxyToAiService } from "@/lib/ai-proxy";
+import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_HISTORY = 20;
+export const maxDuration = 30;
 
 /** Gateway → Python AI service: verifies auth, adds DB context, proxies. */
 export async function POST(req: Request) {
@@ -12,6 +14,9 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  const rl = rateLimit(`tutor:${user.id}`, 30);
+  if (!rl.ok) return tooMany(rl.retryAfter);
 
   let body: { message?: string; conversationHistory?: unknown[]; language?: string };
   try {
