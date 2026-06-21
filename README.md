@@ -1,4 +1,4 @@
-# LearnSign 🤟
+# LearnSign 
 
 > Interactive, AI-powered platform for learning **Indian Sign Language (ISL)** — video
 > lessons, an AI tutor with voice, a webcam sign-recognition quiz, progress tracking,
