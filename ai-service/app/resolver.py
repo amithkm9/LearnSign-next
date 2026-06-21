@@ -116,6 +116,33 @@ def resolve_sign_item(word: str) -> dict | None:
     return item
 
 
+# Words to drop when extracting the intended sign(s) from a conversational ask
+# WITHOUT the LLM — articles, prepositions, auxiliaries, question/request verbs,
+# and the "my child" framing (in a long sentence it's framing, not the target).
+_KEYLESS_FILLER = {
+    "a", "an", "the", "to", "of", "in", "on", "at", "for", "and", "or", "with",
+    "that", "this", "my", "your", "our", "is", "are", "am", "be", "do", "does",
+    "did", "can", "could", "would", "should", "will", "please",
+    "how", "what", "whats", "who", "when", "why", "which", "where",
+    "sign", "signs", "say", "saying", "tell", "show", "teach", "gesture",
+    "communicate", "express", "want", "wants", "need", "learn",
+    "i", "you", "we", "me", "us", "him", "her", "them", "it",
+    "child", "kid", "kids", "children", "son", "daughter", "baby", "toddler",
+    "go", "goes", "going", "get", "got",
+}
+
+
+def heuristic_extract(text: str) -> list[str]:
+    """Keyless conversational extraction: drop filler/request words, keep content.
+
+    Used when no OpenAI key is configured so full-sentence asks
+    ("how do I tell my child to wash hands") still resolve to the real signs.
+    Operates on the already-translated/English `clean_message`.
+    """
+    words = re.findall(r"[A-Za-z]+", text.lower())
+    return [w for w in words if w not in _KEYLESS_FILLER]
+
+
 def llm_resolve_query(message: str, language: str = "en") -> list[str] | None:
     """
     Grounded extraction for conversational asks. Returns an ordered list of

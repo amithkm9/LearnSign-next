@@ -4,7 +4,7 @@ import re
 from .config import DATA_DIR, has_openai
 from .llm import get_openai_client, strip_code_fence
 from .signs import all_signs, find_similar, find_sign_video
-from .resolver import resolve_sign_item, llm_resolve_query, fingerspell
+from .resolver import resolve_sign_item, llm_resolve_query, fingerspell, heuristic_extract
 from .language import (
     LANGUAGE_INSTRUCTIONS,
     SUPPORTED_LANGUAGES,
@@ -192,19 +192,26 @@ def process_message(message: str, language: str = "en", history=None, profile=No
     steps = build_steps(tokens, skip_stop=len(tokens) > 1)
     has_sign = any(s["kind"] == "sign" for s in steps)
 
-    # 2. For conversational asks (or when nothing resolved to a real sign), let
-    #    the grounded LLM extract the intended words instead of the token soup.
-    use_llm = has_openai() and is_sign_request and (len(tokens) > 4 or not has_sign)
-    if use_llm:
-        llm_tokens = llm_resolve_query(message, valid)
-        if llm_tokens:
-            words = [
-                t.split(":", 1)[1] if t.upper().startswith("FINGERSPELL:") else t
-                for t in llm_tokens
-            ]
-            llm_steps = build_steps([w.strip() for w in words])
-            if llm_steps:
-                steps = llm_steps
+    # 2. Conversational asks (or when nothing resolved to a real sign) need the
+    #    intended words extracted from the sentence. With an OpenAI key we use the
+    #    grounded LLM; WITHOUT a key we fall back to a keyless heuristic so the
+    #    sign-teaching chatbot works fully offline of OpenAI.
+    needs_extraction = is_sign_request and (len(tokens) > 4 or not has_sign)
+    if needs_extraction:
+        words: list[str] | None = None
+        if has_openai():
+            llm_tokens = llm_resolve_query(message, valid)
+            if llm_tokens:
+                words = [
+                    t.split(":", 1)[1] if t.upper().startswith("FINGERSPELL:") else t
+                    for t in llm_tokens
+                ]
+        if words is None:
+            words = heuristic_extract(clean_message)  # keyless path
+        if words:
+            extracted = build_steps([w.strip() for w in words])
+            if extracted:
+                steps = extracted
 
     if steps and is_sign_request:
         fingerspelled = [s["word"] for s in steps if s["kind"] == "fingerspell"]
