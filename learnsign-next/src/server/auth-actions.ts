@@ -20,12 +20,17 @@ export type AuthState = {
 
 async function getOrigin() {
   // Prefer an explicitly configured site URL so password-reset / email-confirm
-  // links always point at the real domain (the request `origin` header is
-  // unreliable on serverless and falls back to localhost otherwise).
+  // links always point at the real domain. Fall back to the request origin, then
+  // the host header (always present), and only then to localhost — so a prod
+  // deploy never emits localhost links even if NEXT_PUBLIC_SITE_URL is unset.
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
   const h = await headers();
-  return h.get("origin") ?? "http://localhost:3000";
+  const origin = h.get("origin");
+  if (origin) return origin;
+  const host = h.get("host");
+  if (host) return `https://${host}`;
+  return "http://localhost:3000";
 }
 
 export async function signIn(

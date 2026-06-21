@@ -7,8 +7,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoginForm } from "./login-form";
-import { GoogleButton } from "@/components/auth/google-button";
-import { AuthDivider } from "@/components/auth/auth-divider";
 
 export const metadata = { title: "Sign in" };
 
@@ -31,8 +29,6 @@ export default async function LoginPage({
             {message}
           </p>
         )}
-        <GoogleButton redirectTo={redirectTo} />
-        <AuthDivider />
         <LoginForm redirectTo={redirectTo} />
         <div className="mt-4 flex items-center justify-between text-sm">
           <Link href="/forgot-password" className="text-primary hover:underline">
