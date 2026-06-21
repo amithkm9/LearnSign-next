@@ -4,17 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Mic, Square, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SignSequencePlayer, type SignItem } from "./sign-sequence-player";
+import { SignSequencePlayer, type SignStep } from "./sign-sequence-player";
 
 type TutorResponse = {
   type: string;
   response?: string;
   warning?: string;
-  videoSequence?: SignItem[];
-  responseSigns?: SignItem[];
+  videoSequence?: SignStep[];
+  responseSigns?: SignStep[];
   suggestions?: string[];
   keyPoints?: string[];
   stepByStep?: string[];
+  teachingTips?: string[];
 };
 
 type Message = { role: "user" | "assistant"; text: string; data?: TutorResponse };
@@ -291,8 +292,19 @@ function AssistantBubble({
       )}
 
       {sequence && sequence.length > 0 && (
-        <div className="w-72 max-w-full">
+        <div className="w-96 max-w-full">
           <SignSequencePlayer items={sequence} />
+        </div>
+      )}
+
+      {data.teachingTips && data.teachingTips.length > 0 && (
+        <div className="rounded-lg border border-border bg-background/60 p-2.5">
+          <p className="mb-1 text-xs font-semibold">👩‍🏫 Teaching tips</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+            {data.teachingTips.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
         </div>
       )}
 
