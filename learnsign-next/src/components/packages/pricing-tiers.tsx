@@ -37,7 +37,7 @@ const TIERS: Tier[] = [
       "AI tutor (SignMentor)",
       "Progress tracking & badges",
     ],
-    cta: { type: "link", label: "Start learning free", href: "/register" },
+    cta: { type: "link", label: "Start learning free", href: "/courses" },
   },
   {
     id: "tutor",
