@@ -26,6 +26,7 @@ out/
 
 # IDE
 .idea/
+.vscode/
 
 # Large media — sign/course videos are kept out of git (see README)
 learnsign-next/public/assets/videos/
