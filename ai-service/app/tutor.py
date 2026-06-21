@@ -3,6 +3,7 @@ import re
 
 from .config import DATA_DIR, OPENAI_API_KEY, has_openai
 from .signs import all_signs, find_similar, find_sign_video
+from .resolver import resolve_sign_item, llm_resolve_query, fingerspell
 from .language import (
     LANGUAGE_INSTRUCTIONS,
     SUPPORTED_LANGUAGES,
@@ -37,15 +38,51 @@ SPEECH = {
     "kn": lambda w: f"ಇಲ್ಲಿ {w} ಸೈನ್ ಇದೆ. ಕಲಿಯಲು ವೀಡಿಯೋ ನೋಡಿ!",
     "te": lambda w: f"ఇక్కడ {w} సైన్ ఉంది. నేర్చుకోవడానికి వీడియో చూడండి!",
 }
-WARN = {
-    "en": lambda w: f"Note: No video for: {w}",
-    "hi": lambda w: f"नोट: इनके लिए वीडियो नहीं है: {w}",
-    "kn": lambda w: f"ಗಮನಿಸಿ: ಇವುಗಳಿಗೆ ವೀಡಿಯೋ ಇಲ್ಲ: {w}",
-    "te": lambda w: f"గమనిక: వీటికి వీడియో లేదు: {w}",
+# Shown when a word has no single sign so we fingerspell it letter-by-letter.
+FINGERSPELL_NOTE = {
+    "en": lambda w: f"There's no single sign for {w}, so I'm fingerspelling it letter by letter.",
+    "hi": lambda w: f"{w} के लिए एक साइन नहीं है, इसलिए मैं इसे अक्षर-दर-अक्षर दिखा रहा हूँ।",
+    "kn": lambda w: f"{w} ಗೆ ಒಂದೇ ಸೈನ್ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಅಕ್ಷರ-ಅಕ್ಷರವಾಗಿ ತೋರಿಸುತ್ತಿದ್ದೇನೆ.",
+    "te": lambda w: f"{w} కోసం ఒకే సైన్ లేదు, అందుకే అక్షరం అక్షరం చూపిస్తున్నాను.",
+}
+# Generic, always-correct teaching guidance shown with every demonstration.
+TEACHING_TIPS = {
+    "en": [
+        "Get down to your child's eye level and make eye contact.",
+        "Sign slowly first, then let them try — use the 0.5× and Mirror buttons.",
+        "Repeat it a few times and celebrate every attempt! 🎉",
+    ],
+    "hi": [
+        "बच्चे की आँखों के स्तर पर आएँ और नज़रें मिलाएँ।",
+        "पहले धीरे-धीरे साइन करें, फिर उन्हें करने दें — 0.5× और मिरर बटन इस्तेमाल करें।",
+        "कुछ बार दोहराएँ और हर कोशिश पर शाबाशी दें! 🎉",
+    ],
+    "kn": [
+        "ಮಗುವಿನ ಕಣ್ಣಿನ ಮಟ್ಟಕ್ಕೆ ಬಂದು ಕಣ್ಣಲ್ಲಿ ಕಣ್ಣಿಟ್ಟು ನೋಡಿ.",
+        "ಮೊದಲು ನಿಧಾನವಾಗಿ ಸೈನ್ ಮಾಡಿ, ನಂತರ ಅವರಿಗೆ ಮಾಡಲು ಬಿಡಿ — 0.5× ಮತ್ತು ಮಿರರ್ ಬಳಸಿ.",
+        "ಕೆಲವು ಬಾರಿ ಪುನರಾವರ್ತಿಸಿ ಮತ್ತು ಪ್ರತಿ ಪ್ರಯತ್ನವನ್ನೂ ಹೊಗಳಿ! 🎉",
+    ],
+    "te": [
+        "మీ పిల్లల కంటి స్థాయికి వచ్చి కళ్ళలో కళ్ళు పెట్టి చూడండి.",
+        "ముందు నెమ్మదిగా సైన్ చేయండి, తర్వాత వారిని చేయనివ్వండి — 0.5×, మిర్రర్ వాడండి.",
+        "కొన్ని సార్లు పునరావృతం చేసి ప్రతి ప్రయత్నాన్ని మెచ్చుకోండి! 🎉",
+    ],
+}
+FINGERSPELL_TIP = {
+    "en": "Fingerspelling is perfect for names — point to the thing as you spell it.",
+    "hi": "नाम के लिए फिंगरस्पेलिंग सबसे अच्छी है — चीज़ की ओर इशारा करते हुए अक्षर दिखाएँ।",
+    "kn": "ಹೆಸರುಗಳಿಗೆ ಫಿಂಗರ್‌ಸ್ಪೆಲ್ಲಿಂಗ್ ಸೂಕ್ತ — ವಸ್ತುವಿನತ್ತ ತೋರಿಸುತ್ತಾ ಅಕ್ಷರ ಹೇಳಿ.",
+    "te": "పేర్లకు ఫింగర్‌స్పెల్లింగ్ చక్కగా పనిచేస్తుంది — వస్తువును చూపిస్తూ స్పెల్ చేయండి.",
+}
+
+# Filler words we won't bother fingerspelling inside a multi-word direct ask.
+STOPWORDS = {
+    "THE", "A", "AN", "TO", "OF", "AND", "OR", "MY", "YOUR", "IS", "ARE", "AM",
+    "FOR", "IN", "ON", "AT", "IT", "BE", "DO", "DOES", "I", "SO", "IF", "AS",
 }
 
 _SIGN_REQUEST_PATTERNS = [
-    r"how (do i |to |can i )?sign|show me|teach me|what('s| is) the sign",
+    r"how (do i |to |can i |would i |should i )?(sign|say|tell|show|teach|gesture|communicate|express)|show me|teach me|what('s| is) the sign|sign (for|of)|in sign|tell my (child|kid|son|daughter|baby)|how to (sign|say|tell)",
     r"का साइन|साइन दिखाओ|कैसे करें|सिखाओ|कैसे हो|क्या हाल|नमस्ते|धन्यवाद",
     r"ಸೈನ್|ತೋರಿಸಿ|ಕಲಿಸಿ|ಹೇಗೆ|ಹೇಗಿದ್ದೀ|ನಮಸ್ಕಾರ|ಧನ್ಯವಾದ|ಚೆನ್ನಾಗಿ|ಏನು|ಯಾರು",
     r"సైన్|చూపించు|నేర్పించు|ఎలా|నమస్కారం|ధన్యవాదాలు|బాగున్నారా|ఏమిటి",
@@ -147,32 +184,68 @@ def process_message(message: str, language: str = "en", history=None, profile=No
         re.search(p, message, re.I) for p in _SIGN_REQUEST_PATTERNS
     )
 
-    video_sequence, not_found = [], []
-    for word in clean_message.split():
-        clean = re.sub(r"[^A-Z0-9_]", "", word)
-        if not clean:
-            continue
-        video = find_sign_video(clean)
-        if video:
-            video_sequence.append({"word": clean, "path": video["path"]})
-        else:
-            not_found.append(clean)
+    # 1. Direct resolution of each word (exact -> alias -> synonym -> lemma),
+    #    falling back to fingerspelling so every word yields a teachable step.
+    tokens = [re.sub(r"[^A-Z0-9_]", "", w) for w in clean_message.split()]
+    tokens = [t for t in tokens if t]
 
-    if video_sequence and is_sign_request:
-        found_words = " ".join(v["word"] for v in video_sequence)
+    def to_step(word: str, skip_stop: bool = False) -> dict | None:
+        item = resolve_sign_item(word)
+        if item:
+            step = {"word": item["word"], "kind": "sign", "path": item["path"]}
+            if "matchedFrom" in item:
+                step["matchedFrom"] = item["matchedFrom"]
+            return step
+        if skip_stop and word.upper() in STOPWORDS:
+            return None
+        letters = fingerspell(word)
+        if letters:
+            return {"word": word.upper(), "kind": "fingerspell", "letters": letters}
+        return None
+
+    def build_steps(words: list[str], skip_stop: bool = False) -> list[dict]:
+        return [s for w in words if (s := to_step(w, skip_stop))]
+
+    steps = build_steps(tokens, skip_stop=len(tokens) > 1)
+    has_sign = any(s["kind"] == "sign" for s in steps)
+
+    # 2. For conversational asks (or when nothing resolved to a real sign), let
+    #    the grounded LLM extract the intended words instead of the token soup.
+    use_llm = has_openai() and is_sign_request and (len(tokens) > 4 or not has_sign)
+    if use_llm:
+        llm_tokens = llm_resolve_query(message, valid)
+        if llm_tokens:
+            words = [
+                t.split(":", 1)[1] if t.upper().startswith("FINGERSPELL:") else t
+                for t in llm_tokens
+            ]
+            llm_steps = build_steps([w.strip() for w in words])
+            if llm_steps:
+                steps = llm_steps
+
+    if steps and is_sign_request:
+        fingerspelled = [s["word"] for s in steps if s["kind"] == "fingerspell"]
+        found_words = " ".join(s["word"] for s in steps)
         response = {
             "type": "sign_sequence",
-            "isSentence": len(video_sequence) > 1,
+            "isSentence": len(steps) > 1,
             "sentence": found_words,
             "originalQuery": message,
             "response": HEADER.get(valid, HEADER["en"])(found_words),
-            "videoSequence": video_sequence,
-            "notFoundWords": not_found,
-            "totalVideos": len(video_sequence),
+            "videoSequence": steps,
+            "fingerspelledWords": fingerspelled,
+            "notFoundWords": [],  # nothing is "not found" anymore — we fingerspell it
+            "totalVideos": len(steps),
             "language": valid,
         }
-        if not_found:
-            response["warning"] = WARN.get(valid, WARN["en"])(", ".join(not_found))
+        tips = list(TEACHING_TIPS.get(valid, TEACHING_TIPS["en"]))
+        if fingerspelled:
+            tips.append(FINGERSPELL_TIP.get(valid, FINGERSPELL_TIP["en"]))
+        response["teachingTips"] = tips
+        if fingerspelled:
+            response["warning"] = FINGERSPELL_NOTE.get(valid, FINGERSPELL_NOTE["en"])(
+                ", ".join(fingerspelled)
+            )
         return {
             "response": response,
             "language": valid,
