@@ -1,0 +1,17 @@
+# Core AI service (chat, voice, report)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+openai>=1.55.0
+pydantic>=2.9.0
+python-dotenv>=1.0.0
+
+# Sign recognition (heavy — lazy-loaded). Requires Python <= 3.12.
+# Pinned set: these versions of tensorflow/mediapipe/protobuf are mutually
+# compatible, and the MediaPipe `solutions` API still exists at 0.10.14.
+# tf-keras + TF_USE_LEGACY_KERAS=1 lets us load the legacy Keras-2 .h5 model.
+tensorflow==2.16.2
+tf-keras==2.16.0
+mediapipe==0.10.14
+protobuf>=4.25.3,<5
+opencv-python
+numpy<2
