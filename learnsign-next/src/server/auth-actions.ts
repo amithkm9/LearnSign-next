@@ -19,6 +19,11 @@ export type AuthState = {
 };
 
 async function getOrigin() {
+  // Prefer an explicitly configured site URL so password-reset / email-confirm
+  // links always point at the real domain (the request `origin` header is
+  // unreliable on serverless and falls back to localhost otherwise).
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) return configured.replace(/\/$/, "");
   const h = await headers();
   return h.get("origin") ?? "http://localhost:3000";
 }
