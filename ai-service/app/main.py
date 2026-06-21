@@ -60,9 +60,18 @@ def report_insights(req: ReportInsightsRequest):
 
 @app.post("/recognize", dependencies=[Depends(require_internal_token)])
 def recognize_endpoint(req: RecognizeRequest):
-    from .recognition import recognize
+    try:
+        from .recognition import recognize
 
-    return recognize(req.frames)
+        return recognize(req.frames)
+    except Exception as e:
+        # Never 500 the gateway — return a clean result the quiz can handle.
+        return {
+            "detected_sign": "unknown",
+            "confidence": 0,
+            "message": "Recognition is temporarily unavailable.",
+            "error": str(e)[:300],
+        }
 
 
 @app.post("/voice/tts", dependencies=[Depends(require_internal_token)])
