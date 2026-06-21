@@ -17,11 +17,7 @@
 
 ## 🎥 Live demo
 
-https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4
-
-<video src="https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4" controls width="100%"></video>
-
-> ▶️ If the player doesn't load, [watch the demo here](https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4).
+https://github.com/user-attachments/assets/35933fd6-315e-4785-87b2-b8a1e793f8ec
 
 ---
 
