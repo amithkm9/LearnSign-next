@@ -15,8 +15,19 @@
 
 ---
 
+## 🎥 Live demo
+
+https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4
+
+<video src="https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4" controls width="100%"></video>
+
+> ▶️ If the player doesn't load, [watch the demo here](https://github.com/amithkm9/LearnSign-next/raw/main/docs/live-demo.mp4).
+
+---
+
 ## Table of contents
 
+- [Live demo](#-live-demo)
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
