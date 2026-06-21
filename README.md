@@ -17,7 +17,7 @@
 
 ## 🎥 Live demo
 
-https://github.com/user-attachments/assets/35933fd6-315e-4785-87b2-b8a1e793f8ec
+https://github.com/user-attachments/assets/c131232d-2dc1-4538-a1e3-962981752aa3
 
 ---
 
