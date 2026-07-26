@@ -6,24 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Camera, RotateCcw, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, mediaUrl } from "@/lib/utils";
-
-type Question = {
-  target: string;
-  display: string;
-  video: string;
-  poster: string; // landmark still — shown if the clip can't play (e.g. 1–2 frame clips)
-  color: string;
-};
-
-// The recognition model knows letters a/b/c and numbers one/two/three.
-const QUESTIONS: Question[] = [
-  { target: "A", display: "A", video: "/assets/videos/signs/A.webm", poster: "/assets/imgs/signs/A.jpg", color: "from-brand-blue to-primary" },
-  { target: "B", display: "B", video: "/assets/videos/signs/B.webm", poster: "/assets/imgs/signs/B.jpg", color: "from-brand-pink to-brand-orange" },
-  { target: "C", display: "C", video: "/assets/videos/signs/C.webm", poster: "/assets/imgs/signs/C.jpg", color: "from-brand-green to-brand-blue" },
-  { target: "ONE", display: "1", video: "/assets/videos/signs/1.webm", poster: "/assets/imgs/signs/1.jpg", color: "from-brand-orange to-brand-pink" },
-  { target: "TWO", display: "2", video: "/assets/videos/signs/2.webm", poster: "/assets/imgs/signs/2.jpg", color: "from-primary to-brand-pink" },
-  { target: "THREE", display: "3", video: "/assets/videos/signs/3.webm", poster: "/assets/imgs/signs/3.jpg", color: "from-brand-green to-brand-yellow" },
-];
+import { QUIZ_QUESTIONS as QUESTIONS } from "@/lib/data/quiz";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const PRAISE = ["Woohoo! 🎉", "Amazing! 🌟", "You got it! 🙌", "Brilliant! ✨", "High five! 🖐️", "Superstar! ⭐"];
@@ -44,6 +27,9 @@ export function QuizPlayer() {
   const demoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const startedAt = useRef(0);
+  // Server-signed evidence of each correct answer; the score is computed from
+  // these server-side, so the client never decides its own result.
+  const proofs = useRef<string[]>([]);
 
   // Make sure the reference clip starts playing on each new question.
   useEffect(() => {
@@ -74,6 +60,7 @@ export function QuizPlayer() {
     setCamError(false);
     setStreak(0);
     startedAt.current = Date.now();
+    proofs.current = [];
     setPhase("play");
   }
 
@@ -100,13 +87,18 @@ export function QuizPlayer() {
       const res = await fetch("/api/ml/recognize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames }),
+        body: JSON.stringify({ frames, questionId: current.id }),
       });
       const data = await res.json();
       if (res.ok && !data.error) {
-        const detected = (data.detected_sign || "").toUpperCase();
-        if (detected === current.target) outcome = "correct";
-        else if (detected && detected !== "UNKNOWN") outcome = "wrong";
+        // The server graded this against the question's real target.
+        if (data.correct) {
+          outcome = "correct";
+          if (typeof data.proof === "string") proofs.current.push(data.proof);
+        } else {
+          const detected = (data.detected_sign || "").toUpperCase();
+          if (detected && detected !== "UNKNOWN") outcome = "wrong";
+        }
       }
     } catch {
       outcome = "nohand";
@@ -133,21 +125,16 @@ export function QuizPlayer() {
   }
 
   async function finish(all: boolean[]) {
-    const correct = all.filter(Boolean).length;
-    const score = Math.round((correct / all.length) * 100);
     setResults(all);
     streamRef.current?.getTracks().forEach((t) => t.stop());
     try {
+      // Only the proofs travel — the server recomputes the score from them.
       await fetch("/api/quiz/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          quizId: "sign-practice",
-          score,
-          totalQuestions: all.length,
-          correct,
+          proofs: proofs.current,
           timeMs: Date.now() - startedAt.current,
-          answers: all.map((c, i) => ({ questionId: String(i), correct: c })),
         }),
       });
     } catch {
