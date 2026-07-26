@@ -4,7 +4,19 @@ import re
 from .config import DATA_DIR
 
 with open(DATA_DIR / "signs_manifest.json", encoding="utf-8") as f:
-    _MANIFEST: dict[str, str] = json.load(f)  # {UPPERNAME: "/assets/videos/signs/file.webm"}
+    _MANIFEST: dict[str, str] = json.load(
+        f
+    )  # {UPPERNAME: "/assets/videos/signs/file.webm"}
+
+# Every video path the client is ever allowed to be handed. Model output is
+# checked against this so a prompt injection can't point a <video src> at an
+# arbitrary host.
+_VALID_PATHS: frozenset[str] = frozenset(_MANIFEST.values())
+
+
+def is_known_path(path: object) -> bool:
+    """True only for a path that came from the sign manifest."""
+    return isinstance(path, str) and path in _VALID_PATHS
 
 
 def find_sign_video(word: str) -> dict | None:
