@@ -7,11 +7,17 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL ?? "http://localhost:8100";
 // the slowest path, hence 60s.
 const UPSTREAM_TIMEOUT_MS = 60_000;
 
+// A health probe should fail fast — it only ever renders a status.
+const HEALTH_TIMEOUT_MS = 5_000;
+
 /**
  * Proxies a JSON body to the stateless Python AI service and normalizes the
  * error shape. Shared by the tutor/voice/recognition gateway routes so the
  * fetch + 502 handling lives in one place. Times out, and degrades non-JSON
  * upstream responses (e.g. an HTML 500 page) into a clean 502.
+ *
+ * Error responses deliberately carry no upstream detail: AI_SERVICE_URL is an
+ * internal address and must not reach the browser.
  */
 export async function proxyToAiService(path: string, body: unknown) {
   try {
@@ -34,6 +40,7 @@ export async function proxyToAiService(path: string, body: unknown) {
       data = text ? JSON.parse(text) : {};
     } catch {
       // Upstream returned non-JSON (HTML error page, empty body, etc.).
+      console.error(`ai-proxy: non-JSON response from ${path} (${upstream.status})`);
       return NextResponse.json(
         { error: "AI service returned an invalid response" },
         { status: 502 },
@@ -42,22 +49,25 @@ export async function proxyToAiService(path: string, body: unknown) {
     return NextResponse.json(data, { status: upstream.status });
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "TimeoutError";
+    console.error(`ai-proxy: ${path} ${timedOut ? "timed out" : "unreachable"}`, error);
     return NextResponse.json(
-      {
-        error: timedOut ? "AI service timed out" : "AI service unavailable",
-        hint: `Is the AI service running at ${AI_SERVICE_URL}?`,
-      },
+      { error: timedOut ? "AI service timed out" : "AI service unavailable" },
       { status: timedOut ? 504 : 502 },
     );
   }
 }
 
-/** Reachability check for the AI service. */
+/**
+ * Reachability check for the AI service. Returns only a boolean — the service
+ * address stays server-side.
+ */
 export async function aiServiceReachable() {
   try {
-    const res = await fetch(`${AI_SERVICE_URL}/health`);
-    return { reachable: res.ok, target: AI_SERVICE_URL };
+    const res = await fetch(`${AI_SERVICE_URL}/health`, {
+      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+    });
+    return { reachable: res.ok };
   } catch {
-    return { reachable: false, target: AI_SERVICE_URL };
+    return { reachable: false };
   }
 }
