@@ -74,7 +74,7 @@ export function ReportView() {
   const stats = [
     { icon: Trophy, label: "Courses completed", value: String(s.totalCompleted) },
     { icon: Clock, label: "Total learning time", value: fmtMinutes(s.totalLearningTime) },
-    { icon: Hand, label: "Signs learned (est.)", value: String(s.estimatedSignsLearned) },
+    { icon: Hand, label: "Signs demonstrated", value: String(s.signsPracticed) },
     { icon: Flame, label: "Longest streak", value: `${s.longestStreak} days` },
   ];
 

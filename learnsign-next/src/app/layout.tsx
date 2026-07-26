@@ -29,7 +29,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} ${fredoka.variable} font-sans antialiased`}>
+      {/*
+        Extensions (Grammarly, password managers) inject attributes onto <body>
+        before React hydrates — data-gr-ext-installed and friends — which React
+        reports as a hydration mismatch. Nothing we render differs between
+        server and client, so suppress the warning at this one boundary rather
+        than have a real mismatch hide inside the noise.
+      */}
+      <body
+        suppressHydrationWarning
+        className={`${poppins.variable} ${fredoka.variable} font-sans antialiased`}
+      >
         {children}
       </body>
     </html>

@@ -6,7 +6,9 @@ first /recognize call so chat/voice/report startup stays fast.
 The labels .pkl was missing in the legacy repo, so labels are hardcoded to the
 model's 6 training classes.
 """
+
 import base64
+import threading
 from pathlib import Path
 
 # The .h5 was saved with Keras 3 (uses `batch_shape`), so we load it with
@@ -19,24 +21,39 @@ SEQUENCE_LENGTH = 30
 _model = None
 _hands = None
 
+# FastAPI runs the sync /recognize endpoint in a threadpool, so several requests
+# can land here at once. Neither MediaPipe's `Hands` nor Keras `predict` is
+# thread-safe, and `Hands` additionally carries frame-to-frame tracking state —
+# concurrent quizzes would corrupt each other's landmarks. `_LOAD_LOCK` keeps two
+# cold requests from each loading the model (a likely OOM on a small instance);
+# `_INFER_LOCK` serializes the actual inference.
+_LOAD_LOCK = threading.Lock()
+_INFER_LOCK = threading.Lock()
+
 
 def _ensure_loaded():
     global _model, _hands
-    if _model is None:
-        import tensorflow as tf
+    if _model is not None and _hands is not None:
+        return
+    with _LOAD_LOCK:
+        # Re-check: another thread may have finished loading while we waited.
+        if _model is None:
+            import tensorflow as tf
 
-        _model = tf.keras.models.load_model(str(MODEL_PATH))
-    if _hands is None:
-        # Explicit submodule path — `mediapipe.solutions` isn't always exposed
-        # as an attribute in 0.10.x, especially off the main thread.
-        import mediapipe as mp
+            _model = tf.keras.models.load_model(str(MODEL_PATH))
+        if _hands is None:
+            # Explicit submodule path — `mediapipe.solutions` isn't always exposed
+            # as an attribute in 0.10.x, especially off the main thread.
+            import mediapipe as mp
 
-        _hands = mp.solutions.hands.Hands(
-            static_image_mode=False,
-            max_num_hands=1,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
+            _hands = mp.solutions.hands.Hands(
+                # Each request is an independent burst of frames from a different
+                # user, so tracking state must NOT persist between calls.
+                static_image_mode=True,
+                max_num_hands=1,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
 
 
 def _b64_to_image(s: str):
@@ -78,34 +95,52 @@ def _preprocess(sequence):
 
 def recognize(frames: list[str]) -> dict:
     if not frames:
-        return {"detected_sign": "unknown", "confidence": 0.0, "message": "No frames provided"}
+        return {
+            "detected_sign": "unknown",
+            "confidence": 0.0,
+            "message": "No frames provided",
+        }
 
     import numpy as np
 
     _ensure_loaded()
 
-    all_landmarks = []
+    # Decode outside the lock — it's pure CPU work with no shared state.
+    images = []
     for frame_b64 in frames:
         try:
             img = _b64_to_image(frame_b64)
-            if img is None:
-                continue
-            lm = _landmarks(img)
-            if lm is not None:
-                all_landmarks.append(lm)
+            if img is not None:
+                images.append(img)
         except Exception:
             continue  # skip unreadable frames
 
-    if not all_landmarks:
-        return {"detected_sign": "unknown", "confidence": 0.0, "message": "No hand detected"}
+    # MediaPipe and Keras are not thread-safe; one request at a time past here.
+    with _INFER_LOCK:
+        all_landmarks = []
+        for img in images:
+            try:
+                lm = _landmarks(img)
+                if lm is not None:
+                    all_landmarks.append(lm)
+            except Exception:
+                continue
 
-    sequence = _preprocess(all_landmarks)
-    prediction = _model.predict(np.expand_dims(sequence, axis=0), verbose=0)[0]
+        if not all_landmarks:
+            return {
+                "detected_sign": "unknown",
+                "confidence": 0.0,
+                "message": "No hand detected",
+            }
+
+        sequence = _preprocess(all_landmarks)
+        prediction = _model.predict(np.expand_dims(sequence, axis=0), verbose=0)[0]
     idx = int(np.argmax(prediction))
     confidence = float(prediction[idx])
     detected = LABELS[idx] if idx < len(LABELS) else "unknown"
     all_predictions = {
-        LABELS[i]: float(prediction[i]) for i in range(min(len(LABELS), len(prediction)))
+        LABELS[i]: float(prediction[i])
+        for i in range(min(len(LABELS), len(prediction)))
     }
 
     return {

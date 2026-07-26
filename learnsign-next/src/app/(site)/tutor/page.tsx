@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
 import { TutorChat } from "@/components/tutor/tutor-chat";
 
 export const metadata = {
@@ -5,7 +7,10 @@ export const metadata = {
   description: "Chat with SignMentor — your AI sign-language tutor with video demonstrations and voice.",
 };
 
-export default function TutorPage() {
+export default async function TutorPage() {
+  // Defence in depth: middleware gates /tutor, this guard survives a bypass.
+  if (!(await getUser())) redirect("/login?redirectTo=/tutor");
+
   return (
     <main className="container py-8">
       <div className="mx-auto max-w-3xl">

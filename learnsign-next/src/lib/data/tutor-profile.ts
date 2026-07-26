@@ -1,10 +1,11 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   profiles,
   userProgress,
   quizAttempts,
   learningEvents,
+  courses,
   type ProgressRollup,
 } from "@/lib/db/schema";
 
@@ -83,7 +84,11 @@ export async function getUserTutorProfile(userId: string): Promise<TutorProfile 
   const avgProgress = totalCourses
     ? Math.round(progressRows.reduce((s, p) => s + p.progressPercentage, 0) / totalCourses)
     : 0;
-  const totalMinutes = progressRows.reduce((s, p) => s + (p.timeSpent || 0), 0);
+  // Sum in ms then convert — `timeSpent` is a rounded-down derived column, so
+  // summing it loses up to a minute per course.
+  const totalMinutes = Math.floor(
+    progressRows.reduce((s, p) => s + (p.timeSpentMs || 0), 0) / 60_000,
+  );
 
   const recentQuizScores =
     quizzes.slice(0, 5).map((q) => `${q.score}%`).join(", ") || "No quizzes taken yet";
@@ -96,12 +101,29 @@ export async function getUserTutorProfile(userId: string): Promise<TutorProfile 
   for (const q of quizzes) {
     (perCourse[q.courseId] ??= []).push(q.score || 0);
   }
+
+  // Resolve to human course titles — these are read aloud by the tutor and
+  // shown to parents, where a bare "001, 004" means nothing.
+  const courseIds = Object.keys(perCourse);
+  const titles = courseIds.length
+    ? Object.fromEntries(
+        (
+          await db
+            .select({ id: courses.id, title: courses.title })
+            .from(courses)
+            .where(inArray(courses.id, courseIds))
+        ).map((c) => [c.id, c.title]),
+      )
+    : {};
+  const label = (courseId: string) =>
+    titles[courseId] ?? (courseId === "practice" ? "Sign practice" : courseId);
+
   const weak: string[] = [];
   const strong: string[] = [];
   for (const [courseId, scores] of Object.entries(perCourse)) {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    if (avg < 70) weak.push(courseId);
-    else if (avg >= 85) strong.push(courseId);
+    if (avg < 70) weak.push(label(courseId));
+    else if (avg >= 85) strong.push(label(courseId));
   }
 
   return {

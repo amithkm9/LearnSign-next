@@ -2,9 +2,6 @@ import json
 import re
 
 from .config import DATA_DIR, has_openai
-from .llm import get_openai_client, strip_code_fence
-from .signs import all_signs, find_similar, find_sign_video
-from .resolver import resolve_sign_item, llm_resolve_query, fingerspell, heuristic_extract
 from .language import (
     LANGUAGE_INSTRUCTIONS,
     SUPPORTED_LANGUAGES,
@@ -12,6 +9,14 @@ from .language import (
     extract_english_words_from_response,
     translate_sentence_to_english_signs,
 )
+from .llm import get_openai_client, strip_code_fence
+from .resolver import (
+    fingerspell,
+    heuristic_extract,
+    llm_resolve_query,
+    resolve_sign_item,
+)
+from .signs import all_signs, find_sign_video, find_similar, is_known_path
 
 PROMPT = (DATA_DIR / "tutor_prompt.txt").read_text(encoding="utf-8")
 
@@ -30,7 +35,9 @@ SPEECH = {
 }
 # Shown when a word has no single sign so we fingerspell it letter-by-letter.
 FINGERSPELL_NOTE = {
-    "en": lambda w: f"There's no single sign for {w}, so I'm fingerspelling it letter by letter.",
+    "en": lambda w: (
+        f"There's no single sign for {w}, so I'm fingerspelling it letter by letter."
+    ),
     "hi": lambda w: f"{w} के लिए एक साइन नहीं है, इसलिए मैं इसे अक्षर-दर-अक्षर दिखा रहा हूँ।",
     "kn": lambda w: f"{w} ಗೆ ಒಂದೇ ಸೈನ್ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಅಕ್ಷರ-ಅಕ್ಷರವಾಗಿ ತೋರಿಸುತ್ತಿದ್ದೇನೆ.",
     "te": lambda w: f"{w} కోసం ఒకే సైన్ లేదు, అందుకే అక్షరం అక్షరం చూపిస్తున్నాను.",
@@ -67,8 +74,30 @@ FINGERSPELL_TIP = {
 
 # Filler words we won't bother fingerspelling inside a multi-word direct ask.
 STOPWORDS = {
-    "THE", "A", "AN", "TO", "OF", "AND", "OR", "MY", "YOUR", "IS", "ARE", "AM",
-    "FOR", "IN", "ON", "AT", "IT", "BE", "DO", "DOES", "I", "SO", "IF", "AS",
+    "THE",
+    "A",
+    "AN",
+    "TO",
+    "OF",
+    "AND",
+    "OR",
+    "MY",
+    "YOUR",
+    "IS",
+    "ARE",
+    "AM",
+    "FOR",
+    "IN",
+    "ON",
+    "AT",
+    "IT",
+    "BE",
+    "DO",
+    "DOES",
+    "I",
+    "SO",
+    "IF",
+    "AS",
 }
 
 _SIGN_REQUEST_PATTERNS = [
@@ -103,7 +132,9 @@ def populate_prompt(profile: dict) -> str:
     return prompt
 
 
-def translate_and_extract(response_text: str, language: str, original_query: str = "") -> list[dict]:
+def translate_and_extract(
+    response_text: str, language: str, original_query: str = ""
+) -> list[dict]:
     if not response_text:
         return []
     # Only called for non-English responses (see process_message), so we go
@@ -149,7 +180,48 @@ def translate_and_extract(response_text: str, language: str, original_query: str
         return extract_english_words_from_response(response_text, language)
 
 
-def process_message(message: str, language: str = "en", history=None, profile=None) -> dict:
+def _sanitize_step(step: object) -> dict | None:
+    """Keep a model-produced video step only if every path it carries is ours."""
+    if not isinstance(step, dict):
+        return None
+    if step.get("kind") == "fingerspell":
+        letters = [
+            letter
+            for letter in (step.get("letters") or [])
+            if isinstance(letter, dict) and is_known_path(letter.get("path"))
+        ]
+        return {**step, "letters": letters} if letters else None
+    return step if is_known_path(step.get("path")) else None
+
+
+def sanitize_llm_response(parsed: dict) -> dict:
+    """Strip any video path the model invented.
+
+    The general-help branch returns the model's JSON to the browser, which feeds
+    `path` straight into a <video src>. `mediaUrl` passes absolute URLs through
+    untouched, so an injected "https://attacker/..." would be fetched by the
+    user's browser. Only manifest paths survive.
+    """
+    for key in ("videoSequence", "responseSigns"):
+        value = parsed.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, list):
+            parsed.pop(key, None)
+            continue
+        steps = [s for step in value if (s := _sanitize_step(step))]
+        if steps:
+            parsed[key] = steps
+        else:
+            parsed.pop(key, None)
+    if "responseSigns" not in parsed:
+        parsed.pop("hasResponseSigns", None)
+    return parsed
+
+
+def process_message(
+    message: str, language: str = "en", history=None, profile=None
+) -> dict:
     """Core tutor handler. Returns {response, language, text_for_speech}."""
     history = history or []
     detected = detect_language(message)
@@ -159,12 +231,16 @@ def process_message(message: str, language: str = "en", history=None, profile=No
         else (detected if detected in SUPPORTED_LANGUAGES else "en")
     )
     translation_lang = detected if detected != "en" else valid
-    clean_message = translate_sentence_to_english_signs(message, translation_lang).upper()
+    clean_message = translate_sentence_to_english_signs(
+        message, translation_lang
+    ).upper()
 
     translation_successful = clean_message != message.upper() and len(clean_message) > 0
     is_short = len(clean_message.split()) <= 6
-    is_sign_request = is_short or translation_successful or any(
-        re.search(p, message, re.I) for p in _SIGN_REQUEST_PATTERNS
+    is_sign_request = (
+        is_short
+        or translation_successful
+        or any(re.search(p, message, re.IGNORECASE) for p in _SIGN_REQUEST_PATTERNS)
     )
 
     # 1. Direct resolution of each word (exact -> alias -> synonym -> lemma),
@@ -268,10 +344,17 @@ def process_message(message: str, language: str = "en", history=None, profile=No
         )
         available = all_signs()[:50]
         messages = [
-            {"role": "system", "content": f"{system_prompt}\n\nAvailable sign videos: {', '.join(available)}..."}
+            {
+                "role": "system",
+                "content": f"{system_prompt}\n\nAvailable sign videos: {', '.join(available)}...",
+            }
         ]
         for m in history[-6:]:
-            content = m["content"] if isinstance(m["content"], str) else json.dumps(m["content"])
+            content = (
+                m["content"]
+                if isinstance(m["content"], str)
+                else json.dumps(m["content"])
+            )
             messages.append({"role": m["role"], "content": content})
         messages.append({"role": "user", "content": message})
 
@@ -282,7 +365,11 @@ def process_message(message: str, language: str = "en", history=None, profile=No
         try:
             parsed = json.loads(raw)
         except Exception:
+            parsed = None
+        if not isinstance(parsed, dict):
             parsed = {"type": "general_help", "response": raw}
+        # Model output reaches the browser verbatim — drop any path it invented.
+        parsed = sanitize_llm_response(parsed)
         parsed["language"] = valid
 
         if valid != "en":
@@ -291,6 +378,10 @@ def process_message(message: str, language: str = "en", history=None, profile=No
                 parsed["hasResponseSigns"] = True
                 parsed["responseSigns"] = signs
 
-        return {"response": parsed, "language": valid, "text_for_speech": parsed.get("response") or raw}
+        return {
+            "response": parsed,
+            "language": valid,
+            "text_for_speech": parsed.get("response") or raw,
+        }
     except Exception:
         return fallback()

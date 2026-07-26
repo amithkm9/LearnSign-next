@@ -5,7 +5,27 @@ import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL ?? "http://localhost:8100";
 const TTL = 5 * 60 * 1000; // 5 minutes
+
+// Bounded: one entry per user with no eviction is a memory leak on any
+// long-lived process. Map iterates in insertion order, so deleting from the
+// front drops the oldest entries.
+const MAX_CACHE_ENTRIES = 1_000;
 const cache = new Map<string, { t: number; data: unknown }>();
+
+function cacheSet(userId: string, data: unknown) {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (now - entry.t >= TTL) cache.delete(key);
+  }
+  // Refresh insertion order so a re-cached user counts as recently used.
+  cache.delete(userId);
+  cache.set(userId, { t: now, data });
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next();
+    if (oldest.done) break;
+    cache.delete(oldest.value);
+  }
+}
 
 // The AI narrative (gpt-4o-mini) can take a while; bound the upstream wait below
 // the function limit so a slow/hung Python service can't pin the request.
@@ -32,7 +52,13 @@ export async function GET(req: Request) {
     return NextResponse.json(cached.data);
   }
 
-  const data = await gatherReportData(user.id);
+  let data: Awaited<ReturnType<typeof gatherReportData>>;
+  try {
+    data = await gatherReportData(user.id);
+  } catch (error) {
+    console.error("report data error:", error);
+    return NextResponse.json({ error: "Failed to build report" }, { status: 500 });
+  }
 
   let aiInsights: unknown = null;
   try {
@@ -49,12 +75,15 @@ export async function GET(req: Request) {
     });
     if (upstream.ok) {
       aiInsights = (await upstream.json()).insights;
+    } else {
+      console.error("report insights upstream:", upstream.status);
     }
-  } catch {
+  } catch (error) {
+    console.error("report insights unavailable:", error);
     aiInsights = null; // report still renders with data + charts
   }
 
   const payload = { success: true, report: { ...data, aiInsights } };
-  cache.set(user.id, { t: Date.now(), data: payload });
+  cacheSet(user.id, payload);
   return NextResponse.json(payload);
 }
