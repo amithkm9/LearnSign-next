@@ -21,6 +21,8 @@ node scripts/apply-sql.mjs drizzle/manual/0001_profiles_rls_trigger.sql
 node scripts/apply-sql.mjs drizzle/manual/0002_courses_packages_rls.sql
 node scripts/apply-sql.mjs drizzle/manual/0003_progress_rls.sql
 node scripts/apply-sql.mjs drizzle/manual/0004_oauth_profile.sql
+node scripts/apply-sql.mjs drizzle/manual/0005_profile_column_grants.sql
+node scripts/apply-sql.mjs drizzle/manual/0006_time_spent_ms.sql
 
 # 2. Seed the catalog
 node scripts/seed.mjs
@@ -52,17 +54,24 @@ The upload script prints the value for `NEXT_PUBLIC_MEDIA_BASE_URL` — save it.
    ---
    ```
 
-3. Push the **contents of `ai-service/`** (Dockerfile, `app/`, `requirements.txt`) to the Space repo:
+3. Push the **contents of `ai-service/`** to the Space repo. Copy an **explicit
+   file list** — a Space repo is public, and a wildcard or `cp -a` that sweeps up
+   `ai-service/.env` would publish your OpenAI key:
 
    ```bash
    git clone https://huggingface.co/spaces/<you>/<space> hf-space
-   cp -r ai-service/* hf-space/        # add the README front-matter above
+   cp -r ai-service/Dockerfile ai-service/app ai-service/requirements.txt hf-space/
    cd hf-space && git add . && git commit -m "deploy ai-service" && git push
    ```
 
+   Then confirm nothing sensitive slipped in: `git -C hf-space ls-files | grep -i env`
+   should print nothing.
+
 4. In the Space → **Settings → Variables and secrets**, add:
    - `OPENAI_API_KEY` = your key
-   - `INTERNAL_API_TOKEN` = `<INTERNAL_API_TOKEN>`
+   - `INTERNAL_API_TOKEN` = `<INTERNAL_API_TOKEN>` — **required**. The service
+     refuses to start without it rather than serving the OpenAI endpoints to the
+     open internet. (Local dev only: `ALLOW_INSECURE_LOCAL=1` to run untokened.)
 5. Wait for the build, then check `https://<you>-<space>.hf.space/health` → `{"openai": true}`. Note this base URL.
 
 ---
@@ -81,6 +90,9 @@ The upload script prints the value for `NEXT_PUBLIC_MEDIA_BASE_URL` — save it.
    | `AI_SERVICE_URL` | the HF Space base URL (from Phase 3) |
    | `INTERNAL_API_TOKEN` | `<INTERNAL_API_TOKEN>` |
    | `NEXT_PUBLIC_MEDIA_BASE_URL` | from Phase 2 (e.g. `https://<proj>.supabase.co/storage/v1/object/public/media`) |
+   | `NEXT_PUBLIC_SITE_URL` | **required** — `https://<app>.vercel.app`. Auth email links are built from it; the build refuses to derive it from request headers in production. |
+   | `TOKEN_SIGNING_SECRET` | optional — `openssl rand -hex 32`. Signs quiz proofs and password-recovery grants. Falls back to `SUPABASE_SERVICE_ROLE_KEY` if unset. |
+   | `NEXT_PUBLIC_APP_TIME_ZONE` | optional — IANA zone deciding when a streak day rolls over. Defaults to `Asia/Kolkata`. |
    | `OPENAI_API_KEY` | your key (only if Next calls OpenAI directly; optional) |
 
 3. **Deploy** → note the `https://<app>.vercel.app` URL.

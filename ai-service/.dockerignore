@@ -1,0 +1,17 @@
+# Never bake secrets into an image that ships to a public registry / Space.
+.env
+.env.*
+!.env.example
+
+# Local Python state
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
