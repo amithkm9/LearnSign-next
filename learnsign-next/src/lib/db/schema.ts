@@ -15,6 +15,7 @@ import {
   jsonb,
   timestamp,
   integer,
+  bigint,
   boolean,
   uniqueIndex,
   index,
@@ -34,7 +35,16 @@ export type Subscription = {
 export type ProgressRollup = {
   totalCoursesStarted: number;
   totalCoursesCompleted: number;
-  totalLearningTime: number; // minutes
+  /**
+   * Minutes. Derived from `totalLearningTimeMs` — kept so older readers and
+   * existing rows keep working, but `totalLearningTimeMs` is the source of truth.
+   */
+  totalLearningTime: number;
+  /**
+   * Milliseconds. Heartbeats arrive every 15s, so accumulating in minutes
+   * rounded every increment to zero and learning time never moved.
+   */
+  totalLearningTimeMs?: number;
   currentStreak: number;
   longestStreak: number;
   lastActivityDate?: string; // ISO; used for streak calculation
@@ -162,7 +172,13 @@ export const userProgress = pgTable(
     courseId: text("course_id").notNull(),
     status: text("status").notNull().default("in_progress"), // not_started|in_progress|completed|paused
     progressPercentage: integer("progress_percentage").notNull().default(0),
-    timeSpent: integer("time_spent").notNull().default(0), // minutes
+    /** Minutes. Derived from `timeSpentMs`; read-only for new code. */
+    timeSpent: integer("time_spent").notNull().default(0),
+    /**
+     * Milliseconds — the source of truth. Time arrives in ~15s heartbeats, so
+     * accumulating in whole minutes discarded every increment.
+     */
+    timeSpentMs: bigint("time_spent_ms", { mode: "number" }).notNull().default(0),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true })

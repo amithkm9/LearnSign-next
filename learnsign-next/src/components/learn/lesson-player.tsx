@@ -40,6 +40,9 @@ export function LessonPlayer({
   const sessionId = useRef<string>("");
   const visibleSince = useRef<number | null>(null);
   const pendingMs = useRef(0);
+  // `pagehide` and the effect cleanup both fire on navigation; without this the
+  // final drain is posted (and counted) twice.
+  const ended = useRef(false);
 
   function currentProgress(): number | undefined {
     const v = videoRef.current;
@@ -89,6 +92,7 @@ export function LessonPlayer({
     sessionId.current =
       globalThis.crypto?.randomUUID?.() ?? `s_${Date.now()}_${Math.round(Math.random() * 1e9)}`;
     visibleSince.current = document.visibilityState === "visible" ? Date.now() : null;
+    ended.current = false;
 
     postEvent("start");
     const interval = setInterval(
@@ -108,16 +112,20 @@ export function LessonPlayer({
         postEvent("resume");
       }
     }
-    const onHide = () => postEvent("end", { activeMs: drainActiveMs(), beacon: true });
+    function endOnce() {
+      if (ended.current) return;
+      ended.current = true;
+      postEvent("end", { activeMs: drainActiveMs(), beacon: true });
+    }
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pagehide", endOnce);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onHide);
-      postEvent("end", { activeMs: drainActiveMs(), beacon: true });
+      window.removeEventListener("pagehide", endOnce);
+      endOnce();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, track]);
