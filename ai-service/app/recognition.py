@@ -8,6 +8,7 @@ model's 6 training classes.
 """
 
 import base64
+import threading
 from pathlib import Path
 
 # The .h5 was saved with Keras 3 (uses `batch_shape`), so we load it with
