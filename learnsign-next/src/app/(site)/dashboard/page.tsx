@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     { icon: Clock, value: s.weeklyMinutes, suffix: " min", label: "This week", sub: `${s.daysPracticedThisWeek}/7 days active`, color: "bg-brand-blue/15 text-brand-blue" },
     { icon: Flame, value: s.currentStreak, suffix: s.currentStreak === 1 ? " day" : " days", label: "Current streak", sub: `Best: ${s.longestStreak}`, color: "bg-brand-orange/15 text-brand-orange" },
     { icon: Trophy, value: s.totalCompleted, suffix: "", label: "Courses completed", sub: `${s.coursesInProgress} in progress`, color: "bg-brand-green/15 text-brand-green" },
-    { icon: Hand, value: s.estimatedSignsLearned, suffix: "", label: "Signs learned", sub: "estimated", color: "bg-brand-pink/15 text-brand-pink" },
+    { icon: Hand, value: s.signsPracticed, suffix: "", label: "Signs learned", sub: "demonstrated in the quiz", color: "bg-brand-pink/15 text-brand-pink" },
   ];
 
   const miniStats = [

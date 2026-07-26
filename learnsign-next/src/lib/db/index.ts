@@ -11,15 +11,24 @@ import * as schema from "./schema";
  * otherwise exhaust the pooler (EMAXCONNSESSION: max clients reached). `max` is
  * also capped well under the pooler's per-session limit.
  */
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
 
 const globalForDb = globalThis as unknown as {
   _pgClient?: ReturnType<typeof postgres>;
 };
 
+// TLS is set here rather than left to `?sslmode=require` in the URL: if that
+// query param is ever dropped from an env var, the driver silently falls back
+// to an unencrypted connection. Local Postgres has no TLS, hence the dev case.
+const ssl = process.env.NODE_ENV === "production" ? ("require" as const) : undefined;
+
 const client =
   globalForDb._pgClient ??
   postgres(connectionString, {
+    ssl,
     prepare: false,
     max: 5,
     idle_timeout: 20, // close idle connections after 20s

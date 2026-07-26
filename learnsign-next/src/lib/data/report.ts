@@ -51,7 +51,7 @@ export async function gatherReportData(userId: string) {
       quizPassRate: summary.quizPassRate,
       currentStreak: summary.currentStreak,
       longestStreak: summary.longestStreak,
-      estimatedSignsLearned: summary.estimatedSignsLearned,
+      signsPracticed: summary.signsPracticed,
       totalDaysActive: summary.totalDaysActive,
     },
     weeklyActivity: summary.weeklyActivity,
