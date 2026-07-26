@@ -9,7 +9,12 @@ import { FieldError } from "@/components/ui/field-error";
 
 const initialState: AuthState = { error: null };
 
-export function UpdatePasswordForm() {
+/**
+ * `viaRecovery` only styles the form. Whether the current password is actually
+ * required is decided server-side from the signed recovery grant cookie — a
+ * client flag here would be trivially forged.
+ */
+export function UpdatePasswordForm({ viaRecovery }: { viaRecovery: boolean }) {
   const [state, formAction, pending] = useActionState(
     updatePassword,
     initialState,
@@ -17,6 +22,20 @@ export function UpdatePasswordForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {!viaRecovery && (
+        <div className="space-y-1.5">
+          <Label htmlFor="currentPassword">Current password</Label>
+          <Input
+            id="currentPassword"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+          <FieldError errors={state.fieldErrors?.currentPassword} />
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label htmlFor="password">New password</Label>
         <Input

@@ -1,10 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeRedirectPath } from "@/lib/utils";
+import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/recovery-grant";
 import {
   loginSchema,
   registerSchema,
@@ -19,18 +20,22 @@ export type AuthState = {
 };
 
 async function getOrigin() {
-  // Prefer an explicitly configured site URL so password-reset / email-confirm
-  // links always point at the real domain. Fall back to the request origin, then
-  // the host header (always present), and only then to localhost — so a prod
-  // deploy never emits localhost links even if NEXT_PUBLIC_SITE_URL is unset.
+  // Password-reset and email-confirm links are built from this, so it must not
+  // be attacker-influenced: `Origin` and `Host` are request headers a client
+  // controls, and a poisoned value turns a reset email into a phishing link.
+  // Production therefore REQUIRES an explicitly configured site URL; the header
+  // fallback exists only for local development.
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_SITE_URL must be set in production — auth email links are built from it.",
+    );
+  }
+
   const h = await headers();
-  const origin = h.get("origin");
-  if (origin) return origin;
-  const host = h.get("host");
-  if (host) return `https://${host}`;
-  return "http://localhost:3000";
+  return h.get("origin") ?? `http://${h.get("host") ?? "localhost:3000"}`;
 }
 
 export async function signIn(
@@ -137,6 +142,14 @@ export async function requestPasswordReset(
   };
 }
 
+/**
+ * Sets a new password.
+ *
+ * A valid session alone is not enough: a borrowed or hijacked session would
+ * otherwise convert straight into permanent account ownership. Users who got
+ * here through a recovery link have already proved control of the mailbox, so
+ * they are exempt; everyone else must re-enter their current password.
+ */
 export async function updatePassword(
   _prev: AuthState,
   formData: FormData,
@@ -153,10 +166,58 @@ export async function updatePassword(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Your session has expired. Please sign in again." };
+
+  // Only /auth/callback issues this grant, and only after Supabase accepted a
+  // real recovery code — so it can stand in for the current password.
+  const cookieStore = await cookies();
+  const viaRecovery = verifyRecoveryGrant(
+    cookieStore.get(RECOVERY_COOKIE)?.value,
+    user.id,
+  );
+
+  // Google-only accounts have no password to re-enter; they'd be stuck on a
+  // form they can never satisfy. Send them through the email flow instead.
+  const hasPasswordIdentity =
+    !user.identities || user.identities.some((i) => i.provider === "email");
+
+  if (!viaRecovery && !hasPasswordIdentity) {
+    return {
+      error:
+        "This account signs in with Google. Use “Forgot password” to set a password by email.",
+    };
+  }
+
+  if (!viaRecovery) {
+    const currentPassword = formData.get("currentPassword");
+    if (typeof currentPassword !== "string" || !currentPassword) {
+      return {
+        error: "Enter your current password to change it.",
+        fieldErrors: { currentPassword: ["Current password is required"] },
+      };
+    }
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: user.email ?? "",
+      password: currentPassword,
+    });
+    if (reauthError) {
+      return {
+        error: "That current password is incorrect.",
+        fieldErrors: { currentPassword: ["Incorrect password"] },
+      };
+    }
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
   if (error) return { error: error.message };
+
+  // One grant, one password change.
+  cookieStore.delete(RECOVERY_COOKIE);
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
